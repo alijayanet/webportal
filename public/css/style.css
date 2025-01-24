@@ -44,20 +44,32 @@
     top: 20px;
     right: 20px;
     padding: 15px 25px;
-    border-radius: var(--border-radius);
+    border-radius: 10px;
     color: white;
-    opacity: 0;
-    transition: opacity 0.3s ease;
-}
-
-.toast.show {
-    opacity: 1;
+    z-index: 9999;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+    transition: all 0.3s ease;
 }
 
 .toast.success {
-    background: #48bb78;
+    background: linear-gradient(135deg, #48bb78 0%, #38a169 100%);
 }
 
 .toast.error {
-    background: #f56565;
+    background: linear-gradient(135deg, #f56565 0%, #e53e3e 100%);
+}
+
+.toast.show {
+    animation: slideIn 0.3s ease forwards;
+}
+
+@keyframes slideIn {
+    from {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
 } 

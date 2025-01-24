@@ -141,6 +141,25 @@
             </div>
             <div class="card-body">
                 <div class="row">
+                    <!-- Device Details -->
+                    <div class="col-md-6">
+                        <div class="info-box">
+                            <div class="info-label">
+                                <i class="fas fa-microchip me-2"></i>Model
+                            </div>
+                            <div class="info-value"><%= deviceData.manufacturer %> <%= deviceData.model %></div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="info-box">
+                            <div class="info-label">
+                                <i class="fas fa-barcode me-2"></i>Serial Number
+                            </div>
+                            <div class="info-value"><%= deviceData.serialNumber %></div>
+                        </div>
+                    </div>
+
+                    <!-- Connection Details -->
                     <div class="col-md-6">
                         <div class="info-box">
                             <div class="info-label">
@@ -157,6 +176,8 @@
                             <div class="info-value"><%= deviceData.ipAddress %></div>
                         </div>
                     </div>
+
+                    <!-- WiFi Details -->
                     <div class="col-md-6">
                         <div class="info-box">
                             <div class="info-label">
@@ -168,9 +189,45 @@
                     <div class="col-md-6">
                         <div class="info-box">
                             <div class="info-label">
+                                <i class="fas fa-users me-2"></i>Connected Devices
+                            </div>
+                            <div class="info-value"><%= deviceData.activeDevices %></div>
+                        </div>
+                    </div>
+
+                    <!-- Status Details -->
+                    <div class="col-md-6">
+                        <div class="info-box">
+                            <div class="info-label">
                                 <i class="fas fa-signal me-2"></i>RX Power
                             </div>
-                            <div class="info-value"><%= deviceData.rxPower %></div>
+                            <div class="info-value"><%= deviceData.rxPower %> dBm</div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="info-box">
+                            <div class="info-label">
+                                <i class="fas fa-thermometer-half me-2"></i>Temperature
+                            </div>
+                            <div class="info-value"><%= deviceData.temperature %>°C</div>
+                        </div>
+                    </div>
+
+                    <!-- Uptime Details -->
+                    <div class="col-md-6">
+                        <div class="info-box">
+                            <div class="info-label">
+                                <i class="fas fa-clock me-2"></i>Uptime
+                            </div>
+                            <div class="info-value"><%= deviceData.uptime %></div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="info-box">
+                            <div class="info-label">
+                                <i class="fas fa-sync me-2"></i>Last Boot
+                            </div>
+                            <div class="info-value"><%= deviceData.lastBoot %></div>
                         </div>
                     </div>
                 </div>
@@ -181,37 +238,56 @@
         <div class="card">
             <div class="card-header">
                 <h5 class="card-title mb-0">
-                    <i class="fas fa-cog me-2"></i>WiFi Settings
+                    <i class="fas fa-wifi me-2"></i>WiFi Settings
                 </h5>
             </div>
             <div class="card-body">
-                <form id="wifiSettingsForm">
+                <!-- SSID Form -->
+                <form id="ssidForm" class="mb-4">
                     <div class="row">
-                        <div class="col-md-6">
+                        <div class="col-md-8">
                             <div class="mb-3">
-                                <label for="ssid" class="form-label">SSID</label>
+                                <label for="ssid" class="form-label">SSID (Nama Jaringan WiFi)</label>
                                 <input type="text" class="form-control" id="ssid" name="ssid" 
                                        value="<%= deviceData.ssid %>" required>
+                                <small class="text-muted">Nama yang akan muncul di daftar WiFi</small>
                             </div>
                         </div>
-                        <div class="col-md-6">
+                        <div class="col-md-4 d-flex align-items-end">
+                            <button type="submit" class="btn btn-primary w-100" id="updateSsidBtn">
+                                <span class="spinner-border spinner-border-sm d-none" role="status"></span>
+                                <i class="fas fa-save me-2"></i>Update SSID
+                            </button>
+                        </div>
+                    </div>
+                </form>
+
+                <hr class="my-4">
+
+                <!-- Password Form -->
+                <form id="passwordForm">
+                    <div class="row">
+                        <div class="col-md-8">
                             <div class="mb-3">
-                                <label for="password" class="form-label">Password</label>
+                                <label for="password" class="form-label">Password WiFi</label>
                                 <div class="input-group">
                                     <input type="password" class="form-control" id="password" 
-                                           name="password" placeholder="Enter new password" minlength="8">
+                                           name="password" placeholder="Masukkan password baru" minlength="8">
                                     <button type="button" class="btn btn-outline-secondary" 
                                             onclick="togglePasswordVisibility('password')">
                                         <i class="fas fa-eye"></i>
                                     </button>
                                 </div>
-                                <small class="text-muted">Leave empty if you don't want to change the password</small>
+                                <small class="text-muted">Minimal 8 karakter</small>
                             </div>
                         </div>
+                        <div class="col-md-4 d-flex align-items-end">
+                            <button type="submit" class="btn btn-primary w-100" id="updatePasswordBtn">
+                                <span class="spinner-border spinner-border-sm d-none" role="status"></span>
+                                <i class="fas fa-key me-2"></i>Update Password
+                            </button>
+                        </div>
                     </div>
-                    <button type="submit" class="btn btn-primary">
-                        <i class="fas fa-save me-2"></i>Save Changes
-                    </button>
                 </form>
             </div>
         </div>
