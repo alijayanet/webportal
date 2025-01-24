@@ -1,0 +1,3 @@
+mkdir -p public/css
+mkdir -p public/js
+mkdir -p public/images 
