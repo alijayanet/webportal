@@ -3,342 +3,153 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Router Dashboard</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <title>Dashboard ONT</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-    <style>
-        body {
-            background: #f0f2f5;
-            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
-        }
-        .navbar {
-            background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
-            padding: 1rem;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-        }
-        .navbar-brand {
-            color: white !important;
-            font-weight: 600;
-            font-size: 1.25rem;
-        }
-        .card {
-            border: none;
-            border-radius: 16px;
-            background: white;
-            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -1px rgba(0,0,0,0.06);
-            margin-bottom: 1.5rem;
-            transition: transform 0.2s ease;
-        }
-        .card:hover {
-            transform: translateY(-2px);
-        }
-        .card-header {
-            background: white;
-            border-bottom: 1px solid rgba(0,0,0,0.05);
-            padding: 1.25rem;
-            border-radius: 16px 16px 0 0 !important;
-        }
-        .card-header h5 {
-            font-size: 1.1rem;
-            font-weight: 600;
-            color: #1f2937;
-        }
-        .card-body {
-            padding: 1.25rem;
-        }
-        .info-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-            gap: 1rem;
-        }
-        .info-item {
-            background: #f8fafc;
-            padding: 1rem;
-            border-radius: 12px;
-            transition: all 0.2s ease;
-        }
-        .info-item:hover {
-            background: #f1f5f9;
-        }
-        .info-label {
-            color: #6b7280;
-            font-size: 0.875rem;
-            font-weight: 500;
-            margin-bottom: 0.25rem;
-        }
-        .info-value {
-            color: #1f2937;
-            font-weight: 600;
-            font-size: 1rem;
-        }
-        .status-badge {
-            display: inline-flex;
-            align-items: center;
-            padding: 0.25rem 0.75rem;
-            border-radius: 9999px;
-            font-size: 0.875rem;
-            font-weight: 500;
-        }
-        .status-good {
-            background: #dcfce7;
-            color: #166534;
-        }
-        .status-warning {
-            background: #fef3c7;
-            color: #92400e;
-        }
-        .form-control {
-            border: 1px solid #e5e7eb;
-            border-radius: 12px;
-            padding: 0.75rem 1rem;
-            font-size: 0.95rem;
-            transition: all 0.2s ease;
-        }
-        .form-control:focus {
-            border-color: #4f46e5;
-            box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
-        }
-        .form-label {
-            font-weight: 500;
-            color: #374151;
-        }
-        .btn {
-            padding: 0.75rem 1.5rem;
-            border-radius: 12px;
-            font-weight: 500;
-            transition: all 0.2s ease;
-        }
-        .btn-primary {
-            background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
-            border: none;
-        }
-        .btn-primary:hover {
-            background: linear-gradient(135deg, #4338ca 0%, #6d28d9 100%);
-            transform: translateY(-1px);
-        }
-        .loading-spinner {
-            display: none;
-            margin-right: 8px;
-        }
-        #updateSuccess {
-            display: none;
-            margin-top: 1rem;
-        }
-        .text-muted {
-            color: #6b7280 !important;
-            font-size: 0.875rem;
-        }
-        .info-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 1.5rem;
-        }
-        .info-item {
-            display: flex;
-            flex-direction: column;
-            gap: 0.5rem;
-        }
-        .info-label {
-            font-size: 0.875rem;
-            color: #6b7280;
-            font-weight: 500;
-        }
-        .overview-dot {
-            width: 12px;
-            height: 12px;
-            border-radius: 50%;
-            display: inline-block;
-        }
-        .overview-dot[data-chart="online"] {
-            background-color: #10b981;
-        }
-        .overview-dot[data-chart="signal"] {
-            background-color: #3b82f6;
-        }
-        .device-link {
-            color: #4f46e5;
-            text-decoration: none;
-        }
-        .device-link:hover {
-            text-decoration: underline;
-        }
-        .tags-container {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 0.5rem;
-        }
-        .badge {
-            font-weight: 500;
-            padding: 0.35em 0.65em;
-        }
-    </style>
+    <link href="/css/style.css" rel="stylesheet">
 </head>
-<body>
-    <nav class="navbar navbar-dark">
+<body class="bg-light">
+    <nav class="navbar navbar-expand-lg navbar-dark">
         <div class="container">
             <a class="navbar-brand" href="#">
-                <i class="fas fa-wifi me-2"></i>Router Dashboard
+                <i class="fas fa-wifi me-2"></i>ONT Manager
             </a>
-            <div class="d-flex align-items-center">
-                <a href="/logout" class="btn btn-light btn-sm">
-                    <i class="fas fa-sign-out-alt me-2"></i>Keluar
+            <div class="ms-auto">
+                <a href="/logout" class="btn btn-outline-light btn-sm">
+                    <i class="fas fa-sign-out-alt me-2"></i>Logout
                 </a>
             </div>
         </div>
     </nav>
 
-    <div class="container py-4">
-        <% if (error) { %>
-            <div class="alert alert-warning rounded-3">
-                <i class="fas fa-exclamation-triangle me-2"></i>
-                <%= error %>
-            </div>
-        <% } %>
-
-        <!-- Device Information Card -->
-        <div class="card">
-            <div class="card-header d-flex justify-content-between align-items-center">
-                <h5 class="mb-0">
-                    <i class="fas fa-server me-2"></i>Informasi Perangkat
-                </h5>
-                <div>
-                    <button class="btn btn-outline-primary btn-sm" onclick="refreshDevice()">
-                        <i class="fas fa-sync-alt me-1"></i>Refresh Data
-                    </button>
-                </div>
-            </div>
-            <div class="card-body">
-                <div class="info-grid">
-                    <div class="info-item">
-                        <div class="info-label">Status</div>
-                        <div class="info-value">
-                            <% if (deviceData.status === 'Connected') { %>
-                                <span class="badge bg-success">Online</span>
-                            <% } else { %>
-                                <span class="badge bg-danger">Offline</span>
-                            <% } %>
+    <div class="container my-4">
+        <div class="row">
+            <!-- Status Card -->
+            <div class="col-md-4 mb-4">
+                <div class="card h-100 border-0 shadow-sm">
+                    <div class="card-body text-center">
+                        <div class="status-icon mb-3" style="background-color: <%= deviceData.statusColor %>">
+                            <i class="fas fa-signal"></i>
                         </div>
-                    </div>
-                    <div class="info-item">
-                        <div class="info-label">PPP Username</div>
-                        <div class="device-link"><%= deviceData.pppUsername %></div>
-                    </div>
-                    <div class="info-item">
-                        <div class="info-label">Wifi</div>
-                        <div class="info-value"><%= deviceData.ssid %></div>
-                    </div>
-                    <div class="info-item">
-                        <div class="info-label">SANDI</div>
-                        <div class="info-value">********</div>
-                    </div>
-                    <div class="info-item">
-                        <div class="info-label">Konek</div>
-                        <div class="info-value"><%= deviceData.userConnected %></div>
-                    </div>
-                    <div class="info-item">
-                        <div class="info-label">RX Power</div>
-                        <div class="d-flex align-items-center">
-                            <span class="parameter me-2"><%= deviceData.rxPower ? parseFloat(deviceData.rxPower).toFixed(2) + ' dBm' : 'N/A' %></span>
-                            <span class="overview-dot" data-chart="signal"></span>
-                        </div>
-                    </div>
-                    <div class="info-item">
-                        <div class="info-label">IP Wan</div>
-                        <a href="http://<%= encodeURIComponent(deviceData.pppIP) %>" target="_blank" class="info-value">
-                            <%= deviceData.pppIP %>
-                        </a>
-                    </div>
-                    <div class="info-item">
-                        <div class="info-label">Product class</div>
-                        <div class="info-value"><%= deviceData.productClass %></div>
-                    </div>
-                    <div class="info-item">
-                        <div class="info-label">PON Mode</div>
-                        <div class="info-value"><%= deviceData.ponMode %></div>
-                    </div>
-                    <div class="info-item">
-                        <div class="info-label">Temp</div>
-                        <div class="info-value"><%= deviceData.temp !== 'N/A' ? deviceData.temp + ' °C' : 'N/A' %></div>
-                    </div>
-                    <div class="info-item">
-                        <div class="info-label">IP TR069</div>
-                        <a href="http://<%= encodeURIComponent(deviceData.tr069IP) %>" target="_blank" class="info-value">
-                            <%= deviceData.tr069IP %>
-                        </a>
-                    </div>
-                    <div class="info-item">
-                        <div class="info-label">Uptime</div>
-                        <div class="info-value"><%= deviceData.uptime %></div>
-                    </div>
-                    <div class="info-item">
-                        <div class="info-label">Serial number</div>
-                        <div class="device-link"><%= deviceData.serialNumber %></div>
-                    </div>
-                    <div class="info-item">
-                        <div class="info-label">Last inform</div>
-                        <div class="info-value"><%= deviceData.lastInform %></div>
-                    </div>
-                    <div class="info-item">
-                        <div class="info-label">Nomor Pelanggan</div>
-                        <div class="info-value"><%= deviceData.customerNumber || 'N/A' %></div>
+                        <h5 class="card-title mb-1"><%= deviceData.statusLabel %></h5>
+                        <p class="text-muted small mb-0">Last Inform: <%= deviceData.lastInform %></p>
+                        <button id="refreshButton" class="btn btn-refresh mt-3" onclick="refreshDevice()">
+                            <i class="fas fa-sync-alt me-2"></i>Refresh
+                        </button>
                     </div>
                 </div>
             </div>
-        </div>
 
-        <!-- WiFi Settings Card -->
-        <div class="card">
-            <div class="card-header">
-                <h5 class="mb-0">
-                    <i class="fas fa-wifi me-2"></i>Pengaturan WiFi
-                </h5>
-            </div>
-            <div class="card-body">
-                <!-- SSID Form -->
-                <form id="updateSsidForm" class="needs-validation mb-4" novalidate>
-                    <div class="mb-3">
-                        <label for="ssid" class="form-label">Nama WiFi (SSID)</label>
-                        <input type="text" class="form-control" id="ssid" name="ssid" 
-                               value="<%= deviceData.ssid || '' %>" required>
-                        <div class="invalid-feedback">Nama WiFi harus diisi</div>
+            <!-- Device Info Card -->
+            <div class="col-md-8 mb-4">
+                <div class="card border-0 shadow-sm">
+                    <div class="card-header bg-transparent border-0">
+                        <h5 class="mb-0"><i class="fas fa-server me-2"></i>Device Information</h5>
                     </div>
-                    <button type="submit" class="btn btn-primary" id="updateSsidButton">
-                        <span class="loading-spinner" id="ssidSpinner" style="display: none;">
-                            <i class="fas fa-spinner fa-spin"></i>
-                        </span>
-                        Update SSID
-                    </button>
-                </form>
-
-                <!-- Password Form -->
-                <form id="passwordForm" class="needs-validation">
-                    <div class="mb-3">
-                        <label for="password" class="form-label">Password WiFi</label>
-                        <div class="input-group">
-                            <input type="password" class="form-control" id="password" name="password" 
-                                   required minlength="8">
-                            <button class="btn btn-outline-secondary" type="button" onclick="togglePassword()">
-                                <i class="fas fa-eye"></i>
-                            </button>
+                    <div class="card-body">
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <div class="info-group">
+                                    <label>Model</label>
+                                    <div class="value"><%= deviceData.model %></div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="info-group">
+                                    <label>Serial Number</label>
+                                    <div class="value"><%= deviceData.serialNumber %></div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="info-group">
+                                    <label>PPPoE Username</label>
+                                    <div class="value"><%= deviceData.pppUsername %></div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="info-group">
+                                    <label>MAC Address</label>
+                                    <div class="value"><%= deviceData.pppMac %></div>
+                                </div>
+                            </div>
                         </div>
-                        <div class="invalid-feedback">Password minimal 8 karakter</div>
                     </div>
-                    <button type="submit" class="btn btn-primary" id="updatePasswordButton">
-                        <span class="loading-spinner" id="passwordSpinner" style="display: none;">
-                            <i class="fas fa-spinner fa-spin"></i>
-                        </span>
-                        Update Password
-                    </button>
-                    <div class="alert alert-success mt-2" id="passwordSuccess" style="display: none;">
-                        <i class="fas fa-check-circle me-2"></i>
-                        Password berhasil diperbarui
+                </div>
+            </div>
+
+            <!-- Network Stats -->
+            <div class="col-md-6 mb-4">
+                <div class="card border-0 shadow-sm">
+                    <div class="card-header bg-transparent border-0">
+                        <h5 class="mb-0"><i class="fas fa-chart-line me-2"></i>Network Statistics</h5>
                     </div>
-                </form>
+                    <div class="card-body">
+                        <div class="stat-item">
+                            <div class="stat-icon">
+                                <i class="fas fa-tachometer-alt"></i>
+                            </div>
+                            <div class="stat-info">
+                                <label>RX Power</label>
+                                <div class="value"><%= deviceData.rxPower %> dBm</div>
+                            </div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-icon">
+                                <i class="fas fa-clock"></i>
+                            </div>
+                            <div class="stat-info">
+                                <label>Uptime</label>
+                                <div class="value"><%= deviceData.uptime %></div>
+                            </div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-icon">
+                                <i class="fas fa-users"></i>
+                            </div>
+                            <div class="stat-info">
+                                <label>Connected Users</label>
+                                <div class="value"><%= deviceData.userConnected %></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- WiFi Settings -->
+            <div class="col-md-6 mb-4">
+                <div class="card border-0 shadow-sm">
+                    <div class="card-header bg-transparent border-0">
+                        <h5 class="mb-0"><i class="fas fa-wifi me-2"></i>WiFi Settings</h5>
+                    </div>
+                    <div class="card-body">
+                        <form id="updateSsidForm" class="mb-4">
+                            <div class="form-group mb-3">
+                                <label class="form-label">SSID</label>
+                                <div class="input-group">
+                                    <input type="text" class="form-control" name="ssid" value="<%= deviceData.ssid %>">
+                                    <button type="submit" class="btn btn-primary">Update</button>
+                                </div>
+                            </div>
+                        </form>
+                        <form id="passwordForm">
+                            <div class="form-group">
+                                <label class="form-label">Password</label>
+                                <div class="input-group">
+                                    <input type="password" class="form-control" name="password" minlength="8">
+                                    <button class="btn btn-outline-secondary" type="button" onclick="togglePassword()">
+                                        <i class="fas fa-eye"></i>
+                                    </button>
+                                    <button type="submit" class="btn btn-primary">Update</button>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
         function togglePassword() {
             const passwordInput = document.getElementById('password');
@@ -441,16 +252,27 @@
         });
 
         // Auto refresh setiap 5 menit
-        setInterval(refreshDevice, 300000);
+        let autoRefreshInterval = setInterval(refreshDevice, 300000);
+
+        // Reset interval saat user manual refresh
+        document.getElementById('refreshButton').addEventListener('click', () => {
+            clearInterval(autoRefreshInterval);
+            autoRefreshInterval = setInterval(refreshDevice, 300000);
+        });
+
+        // Cleanup interval saat user meninggalkan halaman
+        window.addEventListener('beforeunload', () => {
+            clearInterval(autoRefreshInterval);
+        });
 
         async function refreshDevice() {
-            const refreshButton = document.querySelector('.btn-outline-primary');
+            const refreshButton = document.getElementById('refreshButton');
             const originalContent = refreshButton.innerHTML;
             
             try {
                 // Disable button dan tampilkan loading
                 refreshButton.disabled = true;
-                refreshButton.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Refreshing...';
+                refreshButton.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Refreshing...';
                 
                 // Kirim request refresh
                 const response = await fetch('/refresh-device', {
@@ -459,6 +281,10 @@
                         'Content-Type': 'application/json'
                     }
                 });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
 
                 const data = await response.json();
                 
@@ -479,7 +305,9 @@
                     }, 3000);
                     
                     // Reload halaman
-                    window.location.reload();
+                    setTimeout(() => {
+                        window.location.reload();
+                    }, 1000);
                 } else {
                     throw new Error(data.message || 'Gagal me-refresh data');
                 }
@@ -488,10 +316,47 @@
                 alert('Terjadi kesalahan saat me-refresh data: ' + error.message);
             } finally {
                 // Kembalikan button ke kondisi awal
-                refreshButton.disabled = false;
-                refreshButton.innerHTML = originalContent;
+                if (refreshButton) {
+                    refreshButton.disabled = false;
+                    refreshButton.innerHTML = originalContent;
+                }
             }
         }
     </script>
+
+    <style>
+        /* Tambahkan style untuk toast */
+        .alert {
+            transition: opacity 0.3s ease-in-out;
+        }
+
+        /* Style untuk button refresh */
+        .btn-refresh {
+            background-color: #f8f9fa;
+            border: 1px solid #dee2e6;
+            color: #6c757d;
+            transition: all 0.2s ease;
+        }
+
+        .btn-refresh:hover {
+            background-color: #e9ecef;
+            color: #495057;
+        }
+
+        .btn-refresh:disabled {
+            opacity: 0.65;
+            cursor: not-allowed;
+        }
+
+        /* Animasi spin untuk icon */
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        .fa-spin {
+            animation: spin 1s linear infinite;
+        }
+    </style>
 </body>
 </html>

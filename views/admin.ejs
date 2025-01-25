@@ -3,29 +3,96 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Admin Panel</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <title>Admin Dashboard</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
+        :root {
+            --primary-gradient: linear-gradient(135deg, #4a90e2 0%, #2c3e50 100%);
+        }
+        
         body {
-            background: #f8f9fa;
+            background-color: #f8f9fa;
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
         }
+        
         .navbar {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: var(--primary-gradient);
+            padding: 1rem 0;
         }
+
         .card {
             border: none;
             border-radius: 15px;
-            box-shadow: 0 5px 20px rgba(0,0,0,0.1);
-            margin-bottom: 20px;
+            box-shadow: 0 2px 15px rgba(0,0,0,0.08);
+            transition: transform 0.2s;
         }
-        .table {
-            margin-bottom: 0;
+
+        .card:hover {
+            transform: translateY(-5px);
         }
-        .btn-assign {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            border: none;
+
+        .device-card {
+            margin-bottom: 1rem;
+        }
+
+        .status-indicator {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 8px;
+        }
+
+        .status-online {
+            background-color: #2ecc71;
+        }
+
+        .status-offline {
+            background-color: #e74c3c;
+        }
+
+        .status-unknown {
+            background-color: #95a5a6;
+        }
+
+        .rx-power-good {
+            color: #2ecc71;
+        }
+
+        .rx-power-warning {
+            color: #f1c40f;
+        }
+
+        .rx-power-critical {
+            color: #e74c3c;
+        }
+
+        .search-box {
+            border-radius: 25px;
+            padding: 0.5rem 1.5rem;
+            border: 1px solid #ddd;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+        }
+
+        .filter-dropdown {
+            border-radius: 25px;
+            padding: 0.5rem 1.5rem;
+            border: 1px solid #ddd;
+        }
+
+        .stats-card {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 15px;
+            text-align: center;
+            margin-bottom: 1rem;
+        }
+
+        .stats-icon {
+            font-size: 2rem;
+            margin-bottom: 1rem;
+            color: #4a90e2;
         }
     </style>
 </head>
@@ -33,7 +100,7 @@
     <nav class="navbar navbar-dark mb-4">
         <div class="container">
             <span class="navbar-brand">
-                <i class="fas fa-cog me-2"></i>Admin Panel
+                <i class="fas fa-network-wired me-2"></i>ONT Monitoring
             </span>
             <div>
                 <a href="/logout" class="btn btn-light btn-sm">
@@ -43,131 +110,284 @@
         </div>
     </nav>
 
-    <div class="container">
-        <div class="row">
-            <div class="col-12">
-                <div class="card">
-                    <div class="card-header">
-                        <h5 class="card-title mb-0">
-                            <i class="fas fa-tags me-2"></i>Assign Tag to Device
-                        </h5>
-                    </div>
-                    <div class="card-body">
-                        <form id="assignTagForm" class="mb-4">
-                            <div class="row g-3">
-                                <div class="col-md-5">
-                                    <select class="form-select" id="deviceId" name="deviceId" required>
-                                        <option value="">Select Device</option>
-                                        <% devices.forEach(function(device) { %>
-                                            <option value="<%= device._id %>">
-                                                <%= device._id %> 
-                                                <% if (device.Tags && device.Tags.length > 0) { %>
-                                                    (Tags: <%= device.Tags.join(', ') %>)
-                                                <% } %>
-                                            </option>
-                                        <% }); %>
-                                    </select>
-                                </div>
-                                <div class="col-md-5">
-                                    <input type="text" class="form-control" id="tag" name="tag" 
-                                           placeholder="Enter customer number as tag" required>
-                                </div>
-                                <div class="col-md-2">
-                                    <button type="submit" class="btn btn-assign w-100">
-                                        <i class="fas fa-plus me-2"></i>Assign
-                                    </button>
-                                </div>
-                            </div>
-                        </form>
+    <% if (error) { %>
+        <div class="alert alert-danger" role="alert">
+            <%= error %>
+        </div>
+    <% } %>
 
-                        <table class="table">
-                            <thead>
-                                <tr>
-                                    <th>Device ID</th>
-                                    <th>Tags</th>
-                                    <th>Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <% devices.forEach(function(device) { %>
-                                    <tr>
-                                        <td><%= device._id %></td>
-                                        <td>
-                                            <% if (device.Tags && device.Tags.length > 0) { %>
-                                                <%= device.Tags.join(', ') %>
-                                            <% } else { %>
-                                                <span class="text-muted">No tags</span>
-                                            <% } %>
-                                        </td>
-                                        <td>
-                                            <% if (device.Tags && device.Tags.length > 0) { %>
-                                                <button class="btn btn-sm btn-danger delete-tag" 
-                                                        data-device-id="<%= device._id %>"
-                                                        data-tags="<%= device.Tags.join(',') %>">
-                                                    <i class="fas fa-trash"></i>
-                                                </button>
-                                            <% } %>
-                                        </td>
-                                    </tr>
-                                <% }); %>
-                            </tbody>
-                        </table>
+    <div class="container">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h4 class="mb-0">Device Management</h4>
+            <button id="refreshAllBtn" class="btn btn-primary">
+                <i class="fas fa-sync-alt me-2"></i>Refresh All Devices
+            </button>
+        </div>
+        <!-- Statistics Summary -->
+        <div class="row mb-4">
+            <div class="col-md-3">
+                <div class="stats-card">
+                    <div class="stats-icon">
+                        <i class="fas fa-wifi"></i>
                     </div>
+                    <h3 id="totalDevices">0</h3>
+                    <p class="text-muted mb-0">Total Devices</p>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="stats-card">
+                    <div class="stats-icon">
+                        <i class="fas fa-check-circle"></i>
+                    </div>
+                    <h3 id="onlineDevices">0</h3>
+                    <p class="text-muted mb-0">Online</p>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="stats-card">
+                    <div class="stats-icon">
+                        <i class="fas fa-times-circle"></i>
+                    </div>
+                    <h3 id="offlineDevices">0</h3>
+                    <p class="text-muted mb-0">Offline</p>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="stats-card">
+                    <div class="stats-icon">
+                        <i class="fas fa-exclamation-triangle"></i>
+                    </div>
+                    <h3 id="criticalDevices">0</h3>
+                    <p class="text-muted mb-0">Critical RX Power</p>
                 </div>
             </div>
         </div>
+
+        <!-- Search and Filter -->
+        <div class="row mb-4">
+            <div class="col-md-6">
+                <input type="text" class="form-control search-box" id="searchInput" 
+                       placeholder="Search by Username or IP...">
+            </div>
+            <div class="col-md-3">
+                <select class="form-select filter-dropdown" id="statusFilter">
+                    <option value="all">All Status</option>
+                    <option value="online">Online</option>
+                    <option value="offline">Offline</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <select class="form-select filter-dropdown" id="rxPowerFilter">
+                    <option value="all">All RX Power</option>
+                    <option value="good">Good (> -25dBm)</option>
+                    <option value="warning">Warning (-25 to -27dBm)</option>
+                    <option value="critical">Critical (< -27dBm)</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- Devices Grid -->
+        <% if (devices && devices.length > 0) { %>
+            <div class="row" id="devicesGrid">
+                <% devices.forEach(function(device) { %>
+                    <div class="col-md-6 col-lg-4 device-card">
+                        <div class="card">
+                            <div class="card-body">
+                                <div class="d-flex justify-content-between align-items-center mb-3">
+                                    <h5 class="card-title mb-0">
+                                        <span class="status-indicator <%= device.online ? 'status-online' : 'status-offline' %>"></span>
+                                        <%= device.pppUsername || 'Unknown User' %>
+                                    </h5>
+                                    <button class="btn btn-sm btn-outline-primary refresh-device-btn" 
+                                            data-device-id="<%= device._id.replace(/\+/g, '%2B').replace(/\s/g, '+') %>">
+                                        <i class="fas fa-sync-alt"></i>
+                                    </button>
+                                </div>
+                                <div class="row g-3">
+                                    <div class="col-6">
+                                        <small class="text-muted d-block">IP Address</small>
+                                        <span><%= device.pppoeIP || 'N/A' %></span>
+                                    </div>
+                                    <div class="col-6">
+                                        <small class="text-muted d-block">RX Power</small>
+                                        <span class="<%= getRxPowerClass(device.rxPower) %>">
+                                            <%= device.rxPower || 'N/A' %> dBm
+                                        </span>
+                                    </div>
+                                    <div class="col-6">
+                                        <small class="text-muted d-block">Model</small>
+                                        <span><%= device.model || 'N/A' %></span>
+                                    </div>
+                                    <div class="col-6">
+                                        <small class="text-muted d-block">Serial Number</small>
+                                        <span><%= device.serialNumber || 'N/A' %></span>
+                                    </div>
+                                    <div class="col-6">
+                                        <small class="text-muted d-block">Connected Devices</small>
+                                        <span>
+                                            <i class="fas fa-users me-1"></i>
+                                            <%= device.connectedDevices %> devices
+                                        </span>
+                                    </div>
+                                    <div class="col-6">
+                                        <small class="text-muted d-block">Last Inform</small>
+                                        <span><%= new Date(device.lastInform).toLocaleString() %></span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                <% }); %>
+            </div>
+        <% } else { %>
+            <div class="alert alert-info" role="alert">
+                Tidak ada perangkat yang ditemukan
+            </div>
+        <% } %>
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-        document.getElementById('assignTagForm').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const formData = {
-                deviceId: document.getElementById('deviceId').value,
-                tag: document.getElementById('tag').value
-            };
+        // Helper function untuk RX Power class
+        function getRxPowerClass(rxPower) {
+            if (!rxPower) return '';
+            const power = parseFloat(rxPower);
+            if (power > -25) return 'rx-power-good';
+            if (power > -27) return 'rx-power-warning';
+            return 'rx-power-critical';
+        }
 
+        // Update statistics
+        function updateStats() {
+            const devices = document.querySelectorAll('.device-card');
+            const online = document.querySelectorAll('.status-online').length;
+            const critical = document.querySelectorAll('.rx-power-critical').length;
+
+            document.getElementById('totalDevices').textContent = devices.length;
+            document.getElementById('onlineDevices').textContent = online;
+            document.getElementById('offlineDevices').textContent = devices.length - online;
+            document.getElementById('criticalDevices').textContent = critical;
+        }
+
+        // Search and filter functionality
+        document.getElementById('searchInput').addEventListener('input', filterDevices);
+        document.getElementById('statusFilter').addEventListener('change', filterDevices);
+        document.getElementById('rxPowerFilter').addEventListener('change', filterDevices);
+
+        function filterDevices() {
+            const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+            const statusFilter = document.getElementById('statusFilter').value;
+            const rxPowerFilter = document.getElementById('rxPowerFilter').value;
+
+            document.querySelectorAll('.device-card').forEach(card => {
+                const username = card.querySelector('.card-title').textContent.toLowerCase();
+                const ip = card.querySelector('.col-6 span').textContent.toLowerCase();
+                const isOnline = card.querySelector('.status-online') !== null;
+                const rxPowerEl = card.querySelector('.rx-power-good, .rx-power-warning, .rx-power-critical');
+                
+                let show = true;
+
+                // Search filter
+                if (searchTerm && !username.includes(searchTerm) && !ip.includes(searchTerm)) {
+                    show = false;
+                }
+
+                // Status filter
+                if (statusFilter !== 'all') {
+                    if (statusFilter === 'online' && !isOnline) show = false;
+                    if (statusFilter === 'offline' && isOnline) show = false;
+                }
+
+                // RX Power filter
+                if (rxPowerFilter !== 'all' && rxPowerEl) {
+                    const powerClass = rxPowerEl.className;
+                    if (rxPowerFilter === 'good' && !powerClass.includes('good')) show = false;
+                    if (rxPowerFilter === 'warning' && !powerClass.includes('warning')) show = false;
+                    if (rxPowerFilter === 'critical' && !powerClass.includes('critical')) show = false;
+                }
+
+                card.style.display = show ? '' : 'none';
+            });
+        }
+
+        // Initial stats update
+        updateStats();
+
+        // Auto refresh every 30 seconds
+        setInterval(() => {
+            location.reload();
+        }, 30000);
+
+        document.getElementById('refreshAllBtn').addEventListener('click', async function() {
             try {
-                const response = await fetch('/assign-tag', {
+                if (!confirm('Are you sure you want to refresh all devices?')) {
+                    return;
+                }
+
+                this.disabled = true;
+                this.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Refreshing...';
+                
+                const response = await fetch('/admin/refresh-all', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify(formData)
+                    }
                 });
-
-                if (response.ok) {
-                    location.reload();
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    alert(data.message);
+                    // Tunggu 5 detik sebelum reload untuk memberi waktu refresh selesai
+                    setTimeout(() => location.reload(), 5000);
                 } else {
-                    alert('Failed to assign tag');
+                    throw new Error(data.message);
                 }
             } catch (error) {
-                console.error('Error:', error);
-                alert('An error occurred');
+                alert('Failed to refresh devices: ' + error.message);
+            } finally {
+                this.disabled = false;
+                this.innerHTML = '<i class="fas fa-sync-alt me-2"></i>Refresh All Devices';
             }
         });
 
-        document.querySelectorAll('.delete-tag').forEach(button => {
-            button.addEventListener('click', async () => {
-                if (confirm('Are you sure you want to delete these tags?')) {
-                    const deviceId = button.dataset.deviceId;
-                    const tags = button.dataset.tags.split(',');
-                    
-                    try {
-                        for (const tag of tags) {
-                            await fetch(`/delete-tag`, {
-                                method: 'POST',
-                                headers: {
-                                    'Content-Type': 'application/json'
-                                },
-                                body: JSON.stringify({ deviceId, tag })
-                            });
-                        }
-                        location.reload();
-                    } catch (error) {
-                        console.error('Error:', error);
-                        alert('Failed to delete tags');
+        document.querySelectorAll('.refresh-device-btn').forEach(button => {
+            button.addEventListener('click', async function() {
+                const deviceId = this.dataset.deviceId;
+                
+                try {
+                    if (!confirm(`Are you sure you want to refresh device ${deviceId}?`)) {
+                        return;
                     }
+
+                    this.disabled = true;
+                    this.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+                    
+                    console.log('Original deviceId:', deviceId);
+                    
+                    // Send deviceId as-is, let server handle the encoding
+                    const response = await fetch(`/admin/refresh-device/${deviceId}`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        }
+                    });
+                    
+                    const data = await response.json();
+                    console.log('Refresh response:', data);
+                    
+                    if (data.success) {
+                        alert('Device refreshed successfully');
+                        // Tunggu 3 detik sebelum reload
+                        setTimeout(() => location.reload(), 3000);
+                    } else {
+                        throw new Error(data.message);
+                    }
+                } catch (error) {
+                    console.error('Refresh error:', error);
+                    alert('Failed to refresh device: ' + error.message);
+                } finally {
+                    this.disabled = false;
+                    this.innerHTML = '<i class="fas fa-sync-alt"></i>';
                 }
             });
         });
