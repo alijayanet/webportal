@@ -113,50 +113,64 @@ app.get('/dashboard', async (req, res) => {
         const device = deviceResponse.data[0];
 
         // Helper function to get RX Power
-        const getRxPower = (device) => {
-            const paths = [
-                'InternetGatewayDevice.WANDevice.1.X_ZTE_OpticalTransceiverDiagnosis.TransceiverRxPower',
-                'InternetGatewayDevice.WANDevice.1.X_HW_PonInterface.OpticalPower',
-                'InternetGatewayDevice.WANDevice.1.WANConnectionDevice.1.WANPPPConnection.1.X_CT-COM_OpticalPower',
-                'InternetGatewayDevice.WANDevice.1.X_CT-COM_OpticalModule.OpticalReceivePower',
-                'InternetGatewayDevice.WANDevice.1.X_CT-COM_GPON.OpticalTransceiverDiagnosis.ReceivePower',
-                'InternetGatewayDevice.WANDevice.1.WANConnectionDevice.1.X_CT-COM_OpticalPower',
-                'InternetGatewayDevice.WANDevice.1.WANConnectionDevice.1.X_CT-COM_GPON.OpticalTransceiverDiagnosis.ReceivePower',
-                'InternetGatewayDevice.WANDevice.1.X_CT-COM_GPON.OpticalPower'
-            ];
+        async function getRxPower(device) {
+            console.log('Getting RX Power for device:', device._id);
             
-            console.log('Checking RX Power paths...');
-            for (const path of paths) {
+            // Get device manufacturer
+            const manufacturer = device.InternetGatewayDevice?.DeviceInfo?.Manufacturer;
+            console.log('Device manufacturer:', manufacturer);
+
+            // List of possible RX Power paths based on manufacturer
+            const rxPowerPaths = [
+                'InternetGatewayDevice.WANDevice.1.X_ZTE-COM_WANPONInterfaceConfig.RXPower',
+                'InternetGatewayDevice.WANDevice.1.X_GponInterafceConfig.RXPower',
+                'InternetGatewayDevice.WANDevice.1.X_FH_GponInterfaceConfig.RXPower',
+                'InternetGatewayDevice.X_ALU_OntOpticalParam.RXPower',
+                'InternetGatewayDevice.WANDevice.1.X_CT-COM_GponInterfaceConfig.RXPower',
+                'InternetGatewayDevice.WANDevice.1.X_CT-COM_EponInterfaceConfig.RXPower',
+                'InternetGatewayDevice.WANDevice.1.X_CMCC_GponInterfaceConfig.RXPower',
+                'InternetGatewayDevice.WANDevice.1.X_CMCC_EponInterfaceConfig.RXPower',
+                'InternetGatewayDevice.WANDevice.1.X_CU_WANEPONInterfaceConfig.OpticalTransceiver.RXPower',
+                'InternetGatewayDevice.WANDevice.1.WANEponInterfaceConfig.RXPower'
+            ];
+
+            let rxPower = null;
+
+            // Check each path
+            for (const path of rxPowerPaths) {
+                console.log('Checking path:', path);
                 const value = getNestedValue(device, path);
-                console.log(`Path ${path}:`, value);
-                if (value) {
-                    // Convert to number and check if it's a valid power reading
-                    const numValue = parseFloat(value);
-                    // RX Power can be either negative (dBm) or positive (for some devices that report in positive values)
-                    if (!isNaN(numValue)) {
-                        console.log(`Found valid RX Power at ${path}:`, numValue);
-                        return numValue;
-                    }
+                
+                if (value !== undefined && value !== null) {
+                    console.log('Found RX Power value:', value, 'in path:', path);
+                    rxPower = value;
+                    break;
                 }
             }
 
-            // Try to find any path containing "OpticalPower" or "RxPower"
-            const searchPaths = findPathsWithKey(device, ['OpticalPower', 'RxPower', 'ReceivePower']);
-            for (const path of searchPaths) {
-                const value = getNestedValue(device, path);
-                console.log(`Found additional path ${path}:`, value);
-                if (value) {
-                    const numValue = parseFloat(value);
-                    if (!isNaN(numValue)) {
-                        console.log(`Found valid RX Power at ${path}:`, numValue);
-                        return numValue;
-                    }
-                }
+            // If no value found, return N/A
+            if (rxPower === null) {
+                console.log('No valid RX Power found in any path');
+                return 'N/A';
             }
 
-            console.log('No valid RX Power found in any path');
-            return undefined;
-        };
+            // Calculate RX Power value
+            try {
+                const numericValue = parseFloat(rxPower);
+                if (!isNaN(numericValue) && numericValue >= 0) {
+                    const calculatedValue = Math.ceil(10 * Math.log10(numericValue / 10000));
+                    if (!isNaN(calculatedValue)) {
+                        console.log('Calculated RX Power:', calculatedValue);
+                        return calculatedValue.toString();
+                    }
+                }
+            } catch (error) {
+                console.error('Error calculating RX Power:', error);
+            }
+
+            // Return original value if calculation fails
+            return rxPower.toString();
+        }
 
         // Helper function to find paths containing specific keys
         const findPathsWithKey = (obj, searchKeys, currentPath = '', results = []) => {
@@ -196,7 +210,7 @@ app.get('/dashboard', async (req, res) => {
             ssid: getNestedValue(device, 'InternetGatewayDevice.LANDevice.1.WLANConfiguration.1.SSID'),
             password: getNestedValue(device, 'InternetGatewayDevice.LANDevice.1.WLANConfiguration.1.KeyPassphrase'),
             userConnected: getNestedValue(device, 'InternetGatewayDevice.LANDevice.1.WLANConfiguration.1.TotalAssociations'),
-            rxPower: getRxPower(device),
+            rxPower: await getRxPower(device),
             pppIP: getNestedValue(device, 'InternetGatewayDevice.WANDevice.1.WANConnectionDevice.1.WANPPPConnection.1.ExternalIPAddress'),
             productClass: getNestedValue(device, 'InternetGatewayDevice.DeviceInfo.ModelName'),
             temp: convertToTemperature(getNestedValue(device, 'InternetGatewayDevice.DeviceInfo.UpTime')),
@@ -276,29 +290,54 @@ const getNestedValue = (obj, path) => {
     }
 };
 
-// Update WiFi settings
-app.post('/update-wifi', async (req, res) => {
+// Helper function to encode device ID properly
+function encodeDeviceId(deviceId) {
+    // First decode to handle any existing encoding
+    const decodedId = decodeURIComponent(deviceId);
+    // Then encode properly for URL
+    return encodeURIComponent(decodedId);
+}
+
+// Update SSID endpoint
+app.post('/update-wifi-ssid', async (req, res) => {
     if (!req.session.username || !req.session.deviceId) {
-        console.log('Unauthorized attempt to update WiFi settings');
+        console.log('Unauthorized attempt to update SSID');
         return res.status(401).json({ error: 'Unauthorized' });
     }
 
-    const { ssid, password } = req.body;
+    const { ssid } = req.body;
     
     // Validate input
-    if (!ssid || !password) {
-        return res.status(400).json({ error: 'SSID and password are required' });
-    }
-    
-    if (password.length < 8) {
-        return res.status(400).json({ error: 'Password must be at least 8 characters long' });
+    if (!ssid) {
+        return res.status(400).json({ error: 'SSID is required' });
     }
 
     try {
-        console.log('Updating WiFi settings for device:', req.session.deviceId);
+        const encodedDeviceId = encodeDeviceId(req.session.deviceId);
+        console.log('Updating SSID for device:', req.session.deviceId);
+        console.log('Encoded device ID:', encodedDeviceId);
+        console.log('New SSID:', ssid);
+
+        // First check if device exists
+        try {
+            const deviceCheck = await axios.get(`${process.env.GENIEACS_URL}/devices/${encodedDeviceId}`, {
+                auth: {
+                    username: process.env.GENIEACS_USERNAME,
+                    password: process.env.GENIEACS_PASSWORD
+                }
+            });
+        } catch (error) {
+            if (error.response?.status === 404) {
+                return res.status(404).json({ 
+                    error: 'Device tidak ditemukan atau offline',
+                    details: 'Pastikan perangkat terhubung dan coba lagi'
+                });
+            }
+            throw error;
+        }
 
         // Set SSID
-        await axios.post(`${process.env.GENIEACS_URL}/devices/${req.session.deviceId}/tasks`, {
+        const ssidResponse = await axios.post(`${process.env.GENIEACS_URL}/devices/${encodedDeviceId}/tasks`, {
             name: "setParameterValues",
             parameterValues: [
                 ["InternetGatewayDevice.LANDevice.1.WLANConfiguration.1.SSID", ssid, "xsd:string"]
@@ -310,21 +349,10 @@ app.post('/update-wifi', async (req, res) => {
             }
         });
 
-        // Set Password
-        await axios.post(`${process.env.GENIEACS_URL}/devices/${req.session.deviceId}/tasks`, {
-            name: "setParameterValues",
-            parameterValues: [
-                ["InternetGatewayDevice.LANDevice.1.WLANConfiguration.1.KeyPassphrase", password, "xsd:string"]
-            ]
-        }, {
-            auth: {
-                username: process.env.GENIEACS_USERNAME,
-                password: process.env.GENIEACS_PASSWORD
-            }
-        });
+        console.log('SSID update response:', ssidResponse.status, ssidResponse.data);
 
         // Apply changes
-        await axios.post(`${process.env.GENIEACS_URL}/devices/${req.session.deviceId}/tasks`, {
+        const applyResponse = await axios.post(`${process.env.GENIEACS_URL}/devices/${encodedDeviceId}/tasks`, {
             name: "setParameterValues",
             parameterValues: [
                 ["InternetGatewayDevice.LANDevice.1.WLANConfiguration.1.X_BROADCOM_COM_ApplyConfiguration", "1", "xsd:string"]
@@ -336,18 +364,137 @@ app.post('/update-wifi', async (req, res) => {
             }
         });
 
-        console.log('WiFi settings updated successfully');
-        res.json({ success: true, message: 'WiFi settings updated successfully' });
+        console.log('Apply configuration response:', applyResponse.status, applyResponse.data);
+        console.log('SSID updated successfully');
+        res.json({ success: true, message: 'SSID updated successfully' });
     } catch (error) {
-        console.error('Update WiFi error:', {
+        console.error('Update SSID error:', {
             message: error.message,
             status: error.response?.status,
             statusText: error.response?.statusText,
-            data: error.response?.data
+            data: error.response?.data,
+            config: {
+                url: error.config?.url,
+                method: error.config?.method,
+                data: error.config?.data
+            }
         });
         
+        let errorMessage = 'Gagal mengupdate SSID';
+        
+        if (error.response?.data?.error) {
+            errorMessage = error.response.data.error;
+        } else if (error.response?.status === 404) {
+            errorMessage = 'Device tidak ditemukan atau offline';
+        } else if (error.response?.status === 401) {
+            errorMessage = 'Autentikasi dengan server GenieACS gagal';
+        }
+        
         res.status(500).json({ 
-            error: 'Failed to update WiFi settings',
+            error: errorMessage,
+            details: error.response?.data || error.message
+        });
+    }
+});
+
+// Update Password endpoint
+app.post('/update-wifi-password', async (req, res) => {
+    if (!req.session.username || !req.session.deviceId) {
+        console.log('Unauthorized attempt to update Password');
+        return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    const { password } = req.body;
+    
+    // Validate input
+    if (!password) {
+        return res.status(400).json({ error: 'Password harus diisi' });
+    }
+    
+    if (password.length < 8) {
+        return res.status(400).json({ error: 'Password minimal 8 karakter' });
+    }
+
+    try {
+        const encodedDeviceId = encodeDeviceId(req.session.deviceId);
+        console.log('Updating Password for device:', req.session.deviceId);
+        console.log('Encoded device ID:', encodedDeviceId);
+        console.log('Password length:', password.length);
+
+        // First check if device exists
+        try {
+            const deviceCheck = await axios.get(`${process.env.GENIEACS_URL}/devices/${encodedDeviceId}`, {
+                auth: {
+                    username: process.env.GENIEACS_USERNAME,
+                    password: process.env.GENIEACS_PASSWORD
+                }
+            });
+        } catch (error) {
+            if (error.response?.status === 404) {
+                return res.status(404).json({ 
+                    error: 'Device tidak ditemukan atau offline',
+                    details: 'Pastikan perangkat terhubung dan coba lagi'
+                });
+            }
+            throw error;
+        }
+
+        // Set Password
+        const passwordResponse = await axios.post(`${process.env.GENIEACS_URL}/devices/${encodedDeviceId}/tasks`, {
+            name: "setParameterValues",
+            parameterValues: [
+                ["InternetGatewayDevice.LANDevice.1.WLANConfiguration.1.KeyPassphrase", password, "xsd:string"]
+            ]
+        }, {
+            auth: {
+                username: process.env.GENIEACS_USERNAME,
+                password: process.env.GENIEACS_PASSWORD
+            }
+        });
+
+        console.log('Password update response:', passwordResponse.status, passwordResponse.data);
+
+        // Apply changes
+        const applyResponse = await axios.post(`${process.env.GENIEACS_URL}/devices/${encodedDeviceId}/tasks`, {
+            name: "setParameterValues",
+            parameterValues: [
+                ["InternetGatewayDevice.LANDevice.1.WLANConfiguration.1.X_BROADCOM_COM_ApplyConfiguration", "1", "xsd:string"]
+            ]
+        }, {
+            auth: {
+                username: process.env.GENIEACS_USERNAME,
+                password: process.env.GENIEACS_PASSWORD
+            }
+        });
+
+        console.log('Apply configuration response:', applyResponse.status, applyResponse.data);
+        console.log('Password updated successfully');
+        res.json({ success: true, message: 'Password berhasil diupdate' });
+    } catch (error) {
+        console.error('Update Password error:', {
+            message: error.message,
+            status: error.response?.status,
+            statusText: error.response?.statusText,
+            data: error.response?.data,
+            config: {
+                url: error.config?.url,
+                method: error.config?.method,
+                data: error.config?.data
+            }
+        });
+        
+        let errorMessage = 'Gagal mengupdate password';
+        
+        if (error.response?.data?.error) {
+            errorMessage = error.response.data.error;
+        } else if (error.response?.status === 404) {
+            errorMessage = 'Device tidak ditemukan atau offline';
+        } else if (error.response?.status === 401) {
+            errorMessage = 'Autentikasi dengan server GenieACS gagal';
+        }
+        
+        res.status(500).json({ 
+            error: errorMessage,
             details: error.response?.data || error.message
         });
     }
