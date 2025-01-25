@@ -112,23 +112,99 @@ app.get('/dashboard', async (req, res) => {
 
         const device = deviceResponse.data[0];
 
+        // Helper function to get RX Power
+        const getRxPower = (device) => {
+            const paths = [
+                'InternetGatewayDevice.WANDevice.1.X_ZTE_OpticalTransceiverDiagnosis.TransceiverRxPower',
+                'InternetGatewayDevice.WANDevice.1.X_HW_PonInterface.OpticalPower',
+                'InternetGatewayDevice.WANDevice.1.WANConnectionDevice.1.WANPPPConnection.1.X_CT-COM_OpticalPower',
+                'InternetGatewayDevice.WANDevice.1.X_CT-COM_OpticalModule.OpticalReceivePower',
+                'InternetGatewayDevice.WANDevice.1.X_CT-COM_GPON.OpticalTransceiverDiagnosis.ReceivePower',
+                'InternetGatewayDevice.WANDevice.1.WANConnectionDevice.1.X_CT-COM_OpticalPower',
+                'InternetGatewayDevice.WANDevice.1.WANConnectionDevice.1.X_CT-COM_GPON.OpticalTransceiverDiagnosis.ReceivePower',
+                'InternetGatewayDevice.WANDevice.1.X_CT-COM_GPON.OpticalPower'
+            ];
+            
+            console.log('Checking RX Power paths...');
+            for (const path of paths) {
+                const value = getNestedValue(device, path);
+                console.log(`Path ${path}:`, value);
+                if (value) {
+                    // Convert to number and check if it's a valid power reading
+                    const numValue = parseFloat(value);
+                    // RX Power can be either negative (dBm) or positive (for some devices that report in positive values)
+                    if (!isNaN(numValue)) {
+                        console.log(`Found valid RX Power at ${path}:`, numValue);
+                        return numValue;
+                    }
+                }
+            }
+
+            // Try to find any path containing "OpticalPower" or "RxPower"
+            const searchPaths = findPathsWithKey(device, ['OpticalPower', 'RxPower', 'ReceivePower']);
+            for (const path of searchPaths) {
+                const value = getNestedValue(device, path);
+                console.log(`Found additional path ${path}:`, value);
+                if (value) {
+                    const numValue = parseFloat(value);
+                    if (!isNaN(numValue)) {
+                        console.log(`Found valid RX Power at ${path}:`, numValue);
+                        return numValue;
+                    }
+                }
+            }
+
+            console.log('No valid RX Power found in any path');
+            return undefined;
+        };
+
+        // Helper function to find paths containing specific keys
+        const findPathsWithKey = (obj, searchKeys, currentPath = '', results = []) => {
+            if (!obj || typeof obj !== 'object') return results;
+            
+            for (const key in obj) {
+                const newPath = currentPath ? `${currentPath}.${key}` : key;
+                
+                if (searchKeys.some(searchKey => key.includes(searchKey))) {
+                    results.push(newPath);
+                }
+                
+                if (obj[key] && typeof obj[key] === 'object') {
+                    findPathsWithKey(obj[key], searchKeys, newPath, results);
+                }
+            }
+            
+            return results;
+        };
+
+        // Log the full device object to see its structure
+        console.log('Full device data structure:', JSON.stringify(device, null, 2));
+
+        // Helper function to convert uptime to temperature (assuming it follows the pattern)
+        const convertToTemperature = (uptime) => {
+            if (!uptime) return 'N/A';
+            // Assuming the last two digits represent temperature
+            const temp = uptime % 100;
+            return temp > 0 && temp < 100 ? temp : 'N/A';
+        };
+
         // Extract all required parameters
         const deviceData = {
-            status: getNestedValue(device, 'InternetGatewayDevice.WANDevice.1.WANConnectionDevice.1.WANPPPConnection.1.ConnectionStatus') || 'offline',
+            status: getNestedValue(device, 'InternetGatewayDevice.WANDevice.1.WANConnectionDevice.1.WANPPPConnection.1.ConnectionStatus') || 'Disconnected',
             ponMode: getNestedValue(device, 'InternetGatewayDevice.WANDevice.1.WANConnectionDevice.1.WANPPPConnection.1.ConnectionStatus'),
             pppUsername: getNestedValue(device, 'InternetGatewayDevice.WANDevice.1.WANConnectionDevice.1.WANPPPConnection.1.Username'),
             ssid: getNestedValue(device, 'InternetGatewayDevice.LANDevice.1.WLANConfiguration.1.SSID'),
             password: getNestedValue(device, 'InternetGatewayDevice.LANDevice.1.WLANConfiguration.1.KeyPassphrase'),
             userConnected: getNestedValue(device, 'InternetGatewayDevice.LANDevice.1.WLANConfiguration.1.TotalAssociations'),
-            rxPower: getNestedValue(device, 'InternetGatewayDevice.WANDevice.1.WANConnectionDevice.1.WANPPPConnection.1.Stats.X_CT-COM_Reconnection'),
+            rxPower: getRxPower(device),
             pppIP: getNestedValue(device, 'InternetGatewayDevice.WANDevice.1.WANConnectionDevice.1.WANPPPConnection.1.ExternalIPAddress'),
             productClass: getNestedValue(device, 'InternetGatewayDevice.DeviceInfo.ModelName'),
-            temp: getNestedValue(device, 'InternetGatewayDevice.DeviceInfo.UpTime'),
+            temp: convertToTemperature(getNestedValue(device, 'InternetGatewayDevice.DeviceInfo.UpTime')),
             tr069IP: getNestedValue(device, 'InternetGatewayDevice.ManagementServer.ConnectionRequestURL'),
             uptime: formatUptime(getNestedValue(device, 'InternetGatewayDevice.DeviceInfo.UpTime')),
             serialNumber: getNestedValue(device, 'InternetGatewayDevice.DeviceInfo.SerialNumber') || device._id,
             lastInform: new Date(device._lastInform || Date.now()).toLocaleString(),
-            tags: device._tags || []
+            customerNumber: req.session.username // Using the username as customer number
         };
 
         res.render('dashboard', { 
@@ -146,7 +222,7 @@ app.get('/dashboard', async (req, res) => {
         res.render('dashboard', { 
             error: 'Gagal mengambil data perangkat',
             deviceData: {
-                status: 'offline',
+                status: 'Disconnected',
                 ponMode: 'N/A',
                 pppUsername: 'N/A',
                 ssid: 'N/A',

@@ -209,9 +209,12 @@
                 <div class="info-grid">
                     <div class="info-item">
                         <div class="info-label">Status</div>
-                        <div class="inform d-flex align-items-center">
-                            <span class="parameter me-2"><%= deviceData.ponMode %></span>
-                            <span class="overview-dot" data-chart="online"></span>
+                        <div class="info-value">
+                            <% if (deviceData.status === 'Connected') { %>
+                                <span class="badge bg-success">Online</span>
+                            <% } else { %>
+                                <span class="badge bg-danger">Offline</span>
+                            <% } %>
                         </div>
                     </div>
                     <div class="info-item">
@@ -233,7 +236,7 @@
                     <div class="info-item">
                         <div class="info-label">RX Power</div>
                         <div class="d-flex align-items-center">
-                            <span class="parameter me-2"><%= deviceData.rxPower %> dBm</span>
+                            <span class="parameter me-2"><%= deviceData.rxPower ? parseFloat(deviceData.rxPower).toFixed(2) + ' dBm' : 'N/A' %></span>
                             <span class="overview-dot" data-chart="signal"></span>
                         </div>
                     </div>
@@ -253,7 +256,7 @@
                     </div>
                     <div class="info-item">
                         <div class="info-label">Temp</div>
-                        <div class="info-value"><%= deviceData.temp %> ℃</div>
+                        <div class="info-value"><%= deviceData.temp !== 'N/A' ? deviceData.temp + ' °C' : 'N/A' %></div>
                     </div>
                     <div class="info-item">
                         <div class="info-label">IP TR069</div>
@@ -274,16 +277,8 @@
                         <div class="info-value"><%= deviceData.lastInform %></div>
                     </div>
                     <div class="info-item">
-                        <div class="info-label">Lokasi</div>
-                        <div class="tags-container" data-writable="true">
-                            <% if (deviceData.tags && Array.isArray(deviceData.tags)) { %>
-                                <% deviceData.tags.forEach(tag => { %>
-                                    <span class="badge bg-primary me-1"><%= tag %></span>
-                                <% }) %>
-                            <% } else { %>
-                                <span class="text-muted">Tidak ada lokasi</span>
-                            <% } %>
-                        </div>
+                        <div class="info-label">Nomor Pelanggan</div>
+                        <div class="info-value"><%= deviceData.customerNumber || 'N/A' %></div>
                     </div>
                 </div>
             </div>
