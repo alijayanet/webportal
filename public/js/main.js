@@ -69,7 +69,7 @@ async function handleSsidFormSubmit(e) {
     console.log('Form data:', { ssid });
     
     try {
-        const response = await fetch('/update-wifi', {
+        const response = await fetch('/update-wifi/ssid', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
@@ -121,7 +121,7 @@ async function handlePasswordFormSubmit(e) {
     console.log('Form data:', { password: '********' });
     
     try {
-        const response = await fetch('/update-wifi', {
+        const response = await fetch('/update-wifi/password', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'

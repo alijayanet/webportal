@@ -93,28 +93,28 @@ app.get('/dashboard', async (req, res) => {
     }
 
     try {
-        // Get device details with virtual parameters
+        // Get device data dengan virtual parameters
         const deviceResponse = await axios.get(`${process.env.GENIEACS_URL}/devices`, {
             params: {
-                query: JSON.stringify({
-                    "_id": req.session.deviceId
-                }),
-                projection: JSON.stringify({
-                    "_id": 1,
-                    "_tags": 1,
-                    "_deviceId": 1,
-                    "_lastInform": 1,
-                    "_registered": 1,
-                    "_lastBoot": 1,
-                    "VirtualParameters": 1,
-                    "InternetGatewayDevice.LANDevice.1.WLANConfiguration.1.SSID._value": 1,
-                    "InternetGatewayDevice.WANDevice.1.WANConnectionDevice.1.WANPPPConnection.1.Username._value": 1,
-                    "InternetGatewayDevice.WANDevice.1.WANConnectionDevice.1.WANPPPConnection.1.ExternalIPAddress._value": 1,
-                    "InternetGatewayDevice.WANDevice.1.WANConnectionDevice.1.PONONU.OpticalSignalLevel._value": 1,
-                    "InternetGatewayDevice.DeviceInfo.TemperatureStatus.TemperatureValue._value": 1,
-                    "InternetGatewayDevice.LANDevice.1.WLANConfiguration.1.TotalAssociations._value": 1,
-                    "InternetGatewayDevice.DeviceInfo.UpTime._value": 1
-                })
+                query: JSON.stringify({ "_id": req.session.deviceId }),
+                projection: JSON.stringify([
+                    "_id",
+                    "_tags",
+                    // WiFi parameters
+                    "InternetGatewayDevice.LANDevice.1.WLANConfiguration.1.SSID._value",
+                    "InternetGatewayDevice.LANDevice.1.WLANConfiguration.1.KeyPassphrase._value",
+                    "InternetGatewayDevice.LANDevice.1.WLANConfiguration.1.PreSharedKey._value",
+                    // Connected devices
+                    "InternetGatewayDevice.LANDevice.1.WLANConfiguration.1.TotalAssociations._value",
+                    // Virtual parameters
+                    "VirtualParameters.WifiPassword._value",
+                    "VirtualParameters.WifiSSID._value",
+                    "VirtualParameters.ConnectedDevices._value",
+                    // Alternative paths
+                    "Device.WiFi.AccessPoint.1.Security.KeyPassphrase._value",
+                    "Device.WiFi.AccessPoint.1.SSIDReference._value",
+                    "Device.WiFi.AccessPoint.1.AssociatedDeviceNumberOfEntries._value"
+                ])
             },
             auth: {
                 username: process.env.GENIEACS_USERNAME,
@@ -122,277 +122,169 @@ app.get('/dashboard', async (req, res) => {
             }
         });
 
+        console.log('Raw Response:', JSON.stringify(deviceResponse.data, null, 2));
+
         if (!deviceResponse.data || !deviceResponse.data.length) {
             throw new Error('Device not found');
         }
 
         const device = deviceResponse.data[0];
-        console.log('Raw device data:', JSON.stringify(device, null, 2));
+        
+        // Debug log
+        console.log('Device data received:', JSON.stringify(device, null, 2));
 
-        // Extract values from device data
+        // Parse device ID untuk informasi dasar
+        const [manufacturer, model, serialNumber] = req.session.deviceId.split('-');
+
+        // Ekstrak SSID dari berbagai kemungkinan path
+        let ssid = 'N/A';
+        const ssidPaths = [
+            device?.InternetGatewayDevice?.LANDevice?.[1]?.WLANConfiguration?.[1]?.SSID?._value,
+            device?.VirtualParameters?.WifiSSID?._value,
+            device?.Device?.WiFi?.AccessPoint?.[1]?.SSIDReference?._value
+        ];
+
+        for (const path of ssidPaths) {
+            if (path) {
+                ssid = path;
+                break;
+            }
+        }
+
+        // Ekstrak user connected dari berbagai kemungkinan path
+        let userConnected = '0';
+        const connectedPaths = [
+            device?.InternetGatewayDevice?.LANDevice?.[1]?.WLANConfiguration?.[1]?.TotalAssociations?._value,
+            device?.VirtualParameters?.ConnectedDevices?._value,
+            device?.Device?.WiFi?.AccessPoint?.[1]?.AssociatedDeviceNumberOfEntries?._value
+        ];
+
+        for (const path of connectedPaths) {
+            if (path !== undefined && path !== null) {
+                userConnected = path.toString();
+                break;
+            }
+        }
+
         const deviceData = {
             username: req.session.username,
-            id: device._id,
-            manufacturer: device._deviceId?._Manufacturer || 'N/A',
-            model: device._deviceId?._ProductClass || 'N/A',
-            serialNumber: device._deviceId?._SerialNumber || 'N/A',
-            macAddress: device.VirtualParameters?.MacAddress?._value || 'N/A',
-            ponMode: device.VirtualParameters?.PonMode?._value || 'N/A',
-            pppoeUsername: device.VirtualParameters?.pppUsername?._value || 
-                          device["InternetGatewayDevice.WANDevice.1.WANConnectionDevice.1.WANPPPConnection.1.Username"]?._value || 'N/A',
-            ipAddress: device.VirtualParameters?.pppIP?._value || 
-                      device["InternetGatewayDevice.WANDevice.1.WANConnectionDevice.1.WANPPPConnection.1.ExternalIPAddress"]?._value || 'N/A',
-            ssid: device.VirtualParameters?.ssid?._value || 
-                  device["InternetGatewayDevice.LANDevice.1.WLANConfiguration.1.SSID"]?._value || 'N/A',
-            rxPower: device.VirtualParameters?.redaman?._value || 
-                    device["InternetGatewayDevice.WANDevice.1.WANConnectionDevice.1.PONONU.OpticalSignalLevel"]?._value || 'N/A',
-            tags: device._tags || [],
-            userConnected: device.VirtualParameters?.userconnected?._value || 
-                          device["InternetGatewayDevice.LANDevice.1.WLANConfiguration.1.TotalAssociations"]?._value || 'N/A',
-            activeDevices: device.VirtualParameters?.activedevices?._value || 'N/A',
-            uptime: device.VirtualParameters?.uptimeDevice?._value || 
-                    device["InternetGatewayDevice.DeviceInfo.UpTime"]?._value || 'N/A',
-            temperature: device.VirtualParameters?.temp?._value || 
-                        device["InternetGatewayDevice.DeviceInfo.TemperatureStatus.TemperatureValue"]?._value || 'N/A',
-            lastBoot: device._lastBoot ? new Date(device._lastBoot).toLocaleString('id-ID') : 'N/A',
-            lastInform: device._lastInform ? new Date(device._lastInform).toLocaleString('id-ID') : 'N/A'
+            model: model || 'HG8245A',
+            serialNumber: serialNumber || 'N/A',
+            ssid: ssid,
+            userConnected: userConnected
         };
 
+        // Debug log
         console.log('Processed device data:', deviceData);
+
         res.render('dashboard', { deviceData, error: null });
 
     } catch (error) {
-        console.error('Dashboard error:', error);
-        console.error('Error details:', {
+        console.error('Dashboard error:', {
             message: error.message,
+            response: error.response?.data,
             status: error.response?.status,
-            data: error.response?.data
+            stack: error.stack
         });
+
+        const [manufacturer, model, serialNumber] = req.session.deviceId.split('-');
 
         res.render('dashboard', { 
             deviceData: {
                 username: req.session.username,
-                id: req.session.deviceId,
-                manufacturer: 'N/A',
-                model: 'N/A',
-                serialNumber: 'N/A',
-                macAddress: 'N/A',
-                ponMode: 'N/A',
-                pppoeUsername: 'N/A',
-                ipAddress: 'N/A',
+                model: model || 'HG8245A',
+                serialNumber: serialNumber || 'N/A',
                 ssid: 'N/A',
-                rxPower: 'N/A',
-                tags: [],
-                userConnected: 'N/A',
-                activeDevices: 'N/A',
-                uptime: 'N/A',
-                temperature: 'N/A',
-                lastBoot: 'N/A',
-                lastInform: 'N/A'
+                userConnected: '0'
             },
             error: `Gagal mengambil data perangkat: ${error.message}`
         });
     }
 });
 
-// Update WiFi settings
-app.post('/update-wifi', async (req, res) => {
+// Update WiFi settings (dipisah menjadi dua endpoint)
+app.post('/update-wifi/ssid', async (req, res) => {
     if (!req.session.username || !req.session.deviceId) {
-        console.log('Unauthorized attempt to update WiFi settings');
         return res.status(401).json({ error: 'Unauthorized' });
     }
 
-    const { ssid, password } = req.body;
+    const { ssid } = req.body;
     const deviceId = encodeURIComponent(req.session.deviceId);
     
-    console.log('Received WiFi update request:', {
-        deviceId,
-        ssid,
-        hasPassword: !!password,
-        sessionUsername: req.session.username
-    });
-    
     try {
-        // Buat task untuk update WiFi settings
         const task = {
             name: "setParameterValues",
-            parameterValues: []
+            parameterValues: [
+                ["InternetGatewayDevice.LANDevice.1.WLANConfiguration.1.SSID", ssid, "xsd:string"],
+                ["InternetGatewayDevice.LANDevice.1.WLANConfiguration.1.Enable", "1", "xsd:boolean"]
+            ]
         };
 
-        // Tambahkan SSID jika ada
-        if (ssid) {
-            console.log('Adding SSID to task:', ssid);
-            task.parameterValues.push([
-                "InternetGatewayDevice.LANDevice.1.WLANConfiguration.1.SSID",
-                ssid,
-                "xsd:string"
-            ]);
-
-            // Enable WiFi jika mengubah SSID
-            task.parameterValues.push([
-                "InternetGatewayDevice.LANDevice.1.WLANConfiguration.1.Enable",
-                "1",
-                "xsd:boolean"
-            ]);
-        }
-
-        // Tambahkan password jika ada
-        if (password) {
-            console.log('Adding password to task');
-            // Set security mode to WPA2-PSK
-            task.parameterValues.push([
-                "InternetGatewayDevice.LANDevice.1.WLANConfiguration.1.BeaconType",
-                "WPAand11i",
-                "xsd:string"
-            ]);
-
-            // Set WPA/WPA2 mode
-            task.parameterValues.push([
-                "InternetGatewayDevice.LANDevice.1.WLANConfiguration.1.WPAAuthenticationMode",
-                "PSKAuthentication",
-                "xsd:string"
-            ]);
-
-            // Set encryption type ke AES
-            task.parameterValues.push([
-                "InternetGatewayDevice.LANDevice.1.WLANConfiguration.1.WPAEncryptionModes",
-                "AESEncryption",
-                "xsd:string"
-            ]);
-
-            // Set password
-            task.parameterValues.push([
-                "InternetGatewayDevice.LANDevice.1.WLANConfiguration.1.PreSharedKey.1.PreSharedKey",
-                password,
-                "xsd:string"
-            ]);
-
-            // Enable password encryption
-            task.parameterValues.push([
-                "InternetGatewayDevice.LANDevice.1.WLANConfiguration.1.PreSharedKey.1.Enable",
-                "1",
-                "xsd:boolean"
-            ]);
-        }
-
-        if (task.parameterValues.length === 0) {
-            console.log('No changes requested');
-            return res.json({ 
-                success: false, 
-                error: 'No changes requested' 
-            });
-        }
-
-        console.log('Sending task to GenieACS:', JSON.stringify(task, null, 2));
-        console.log('Device ID:', deviceId);
-
-        try {
-            // Verifikasi device terlebih dahulu
-            const deviceCheck = await axios.get(`${process.env.GENIEACS_URL}/devices`, {
-                params: {
-                    query: JSON.stringify({ "_id": deviceId })
-                },
+        await axios.post(
+            `${process.env.GENIEACS_URL}/devices/${deviceId}/tasks`,
+            task,
+            {
                 auth: {
                     username: process.env.GENIEACS_USERNAME,
                     password: process.env.GENIEACS_PASSWORD
                 }
-            });
-            
-            if (!deviceCheck.data || !deviceCheck.data.length) {
-                throw new Error('Device not found');
             }
-            
-            console.log('Device found:', deviceCheck.data[0]);
+        );
 
-            // Kirim task ke GenieACS
-            const taskUrl = `${process.env.GENIEACS_URL}/devices/${deviceId}/tasks`;
-            console.log('Sending task to:', taskUrl);
-            
-            const response = await axios({
-                method: 'post',
-                url: taskUrl,
-                data: task,
-                auth: {
-                    username: process.env.GENIEACS_USERNAME,
-                    password: process.env.GENIEACS_PASSWORD
-                },
-                headers: {
-                    'Content-Type': 'application/json'
-                }
-            });
-
-            console.log('GenieACS task response:', response.data);
-
-            // Tunggu sebentar untuk memastikan perubahan diterapkan
-            console.log('Waiting for changes to apply...');
-            await new Promise(resolve => setTimeout(resolve, 5000));
-
-            // Verifikasi perubahan
-            console.log('Verifying changes...');
-            const verifyResponse = await axios.get(`${process.env.GENIEACS_URL}/devices`, {
-                params: {
-                    query: JSON.stringify({ "_id": deviceId })
-                },
-                auth: {
-                    username: process.env.GENIEACS_USERNAME,
-                    password: process.env.GENIEACS_PASSWORD
-                }
-            });
-
-            if (!verifyResponse.data || !verifyResponse.data.length) {
-                throw new Error('Failed to verify changes');
-            }
-
-            console.log('Verification response:', JSON.stringify(verifyResponse.data[0], null, 2));
-
-            // Tambahkan task reboot jika ada perubahan password
-            if (password) {
-                console.log('Adding reboot task...');
-                await axios({
-                    method: 'post',
-                    url: taskUrl,
-                    data: {
-                        name: "reboot"
-                    },
-                    auth: {
-                        username: process.env.GENIEACS_USERNAME,
-                        password: process.env.GENIEACS_PASSWORD
-                    },
-                    headers: {
-                        'Content-Type': 'application/json'
-                    }
-                });
-            }
-
-            res.json({ 
-                success: true, 
-                message: password ? 
-                    'Pengaturan WiFi berhasil diupdate. Device akan direstart.' : 
-                    'SSID berhasil diupdate.'
-            });
-        } catch (axiosError) {
-            console.error('Axios error:', {
-                message: axiosError.message,
-                status: axiosError.response?.status,
-                statusText: axiosError.response?.statusText,
-                data: axiosError.response?.data,
-                url: axiosError.config?.url,
-                method: axiosError.config?.method,
-                requestData: axiosError.config?.data
-            });
-            throw axiosError;
-        }
+        res.json({ success: true, message: 'SSID berhasil diupdate' });
     } catch (error) {
-        console.error('Update WiFi error:', {
-            message: error.message,
-            status: error.response?.status,
-            data: error.response?.data,
-            stack: error.stack
-        });
-        res.status(500).json({ 
-            success: false, 
-            error: `Gagal mengupdate pengaturan WiFi: ${error.message}`
-        });
+        console.error('Update SSID error:', error);
+        res.status(500).json({ success: false, error: 'Gagal mengupdate SSID' });
+    }
+});
+
+app.post('/update-wifi/password', async (req, res) => {
+    if (!req.session.username || !req.session.deviceId) {
+        return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    const { password } = req.body;
+    const deviceId = encodeURIComponent(req.session.deviceId);
+    
+    try {
+        const task = {
+            name: "setParameterValues",
+            parameterValues: [
+                ["InternetGatewayDevice.LANDevice.1.WLANConfiguration.1.BeaconType", "WPAand11i", "xsd:string"],
+                ["InternetGatewayDevice.LANDevice.1.WLANConfiguration.1.WPAAuthenticationMode", "PSKAuthentication", "xsd:string"],
+                ["InternetGatewayDevice.LANDevice.1.WLANConfiguration.1.WPAEncryptionModes", "AESEncryption", "xsd:string"],
+                ["InternetGatewayDevice.LANDevice.1.WLANConfiguration.1.PreSharedKey.1.PreSharedKey", password, "xsd:string"],
+                ["InternetGatewayDevice.LANDevice.1.WLANConfiguration.1.PreSharedKey.1.Enable", "1", "xsd:boolean"]
+            ]
+        };
+
+        await axios.post(
+            `${process.env.GENIEACS_URL}/devices/${deviceId}/tasks`,
+            task,
+            {
+                auth: {
+                    username: process.env.GENIEACS_USERNAME,
+                    password: process.env.GENIEACS_PASSWORD
+                }
+            }
+        );
+
+        // Tambahkan task reboot
+        await axios.post(
+            `${process.env.GENIEACS_URL}/devices/${deviceId}/tasks`,
+            { name: "reboot" },
+            {
+                auth: {
+                    username: process.env.GENIEACS_USERNAME,
+                    password: process.env.GENIEACS_PASSWORD
+                }
+            }
+        );
+
+        res.json({ success: true, message: 'Password berhasil diupdate. Device akan direstart.' });
+    } catch (error) {
+        console.error('Update password error:', error);
+        res.status(500).json({ success: false, error: 'Gagal mengupdate password' });
     }
 });
 
@@ -524,6 +416,50 @@ app.get('/logout', (req, res) => {
     req.session.destroy();
     res.redirect('/');
 });
+
+// Tambahkan fungsi untuk memformat uptime
+function formatUptime(uptimeStr) {
+    if (!uptimeStr) return 'N/A';
+    
+    // Jika uptimeStr sudah dalam format yang diinginkan, langsung kembalikan
+    if (typeof uptimeStr === 'string' && uptimeStr.includes('hari')) {
+        return uptimeStr;
+    }
+
+    // Jika dalam bentuk detik, konversi
+    const seconds = parseInt(uptimeStr);
+    if (isNaN(seconds)) return uptimeStr;
+    
+    const days = Math.floor(seconds / 86400);
+    const hours = Math.floor((seconds % 86400) / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+    
+    let uptime = '';
+    if (days > 0) uptime += `${days} hari `;
+    if (hours > 0) uptime += `${hours} jam `;
+    if (minutes > 0) uptime += `${minutes} menit`;
+    
+    return uptime.trim() || 'Baru saja';
+}
+
+// Tambahkan fungsi helper untuk mengambil nilai parameter
+function getParameterValue(device, paths) {
+    for (let path of paths) {
+        const keys = path.split('.');
+        let value = device;
+        
+        for (let key of keys) {
+            value = value?.[key];
+            if (!value) break;
+        }
+        
+        if (value?._value !== undefined) {
+            return value._value;
+        }
+    }
+    
+    return null;
+}
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
