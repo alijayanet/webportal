@@ -293,7 +293,7 @@
             </div>
             <div class="card-body">
                 <!-- SSID Form -->
-                <form id="ssidForm" class="needs-validation mb-4" novalidate>
+                <form id="updateSsidForm" class="needs-validation mb-4" novalidate>
                     <div class="mb-3">
                         <label for="ssid" class="form-label">Nama WiFi (SSID)</label>
                         <input type="text" class="form-control" id="ssid" name="ssid" 
@@ -301,15 +301,11 @@
                         <div class="invalid-feedback">Nama WiFi harus diisi</div>
                     </div>
                     <button type="submit" class="btn btn-primary" id="updateSsidButton">
-                        <span class="loading-spinner" id="ssidSpinner">
+                        <span class="loading-spinner" id="ssidSpinner" style="display: none;">
                             <i class="fas fa-spinner fa-spin"></i>
                         </span>
                         Update SSID
                     </button>
-                    <div class="alert alert-success mt-2" id="ssidSuccess" style="display: none;">
-                        <i class="fas fa-check-circle me-2"></i>
-                        SSID berhasil diperbarui
-                    </div>
                 </form>
 
                 <!-- Password Form -->
@@ -318,7 +314,7 @@
                         <label for="password" class="form-label">Password WiFi</label>
                         <div class="input-group">
                             <input type="password" class="form-control" id="password" name="password" 
-                                   value="<%= deviceData.password || '' %>" required minlength="8">
+                                   required minlength="8">
                             <button class="btn btn-outline-secondary" type="button" onclick="togglePassword()">
                                 <i class="fas fa-eye"></i>
                             </button>
@@ -326,7 +322,7 @@
                         <div class="invalid-feedback">Password minimal 8 karakter</div>
                     </div>
                     <button type="submit" class="btn btn-primary" id="updatePasswordButton">
-                        <span class="loading-spinner" id="passwordSpinner">
+                        <span class="loading-spinner" id="passwordSpinner" style="display: none;">
                             <i class="fas fa-spinner fa-spin"></i>
                         </span>
                         Update Password
@@ -357,41 +353,44 @@
             }
         }
 
-        // SSID Form Submit Handler
-        document.getElementById('ssidForm').addEventListener('submit', async function(e) {
+        // Update SSID Form Handler
+        document.getElementById('updateSsidForm').addEventListener('submit', async function(e) {
             e.preventDefault();
             
-            const button = document.getElementById('updateSsidButton');
-            const spinner = document.getElementById('ssidSpinner');
-            button.disabled = true;
-            spinner.style.display = 'inline-block';
+            const ssid = document.getElementById('ssid').value;
+            const ssidSpinner = document.getElementById('ssidSpinner');
+            const updateSsidButton = document.getElementById('updateSsidButton');
             
             try {
-                const response = await fetch('/update-wifi-ssid', {
+                // Show spinner and disable button
+                ssidSpinner.style.display = 'inline-block';
+                updateSsidButton.disabled = true;
+                
+                const response = await fetch('/update-wifi', {  // Endpoint yang benar
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
                     },
                     body: JSON.stringify({
-                        ssid: document.getElementById('ssid').value
+                        ssid: ssid
                     })
                 });
 
-                const result = await response.json();
+                const data = await response.json();
                 
-                if (response.ok) {
-                    document.getElementById('ssidSuccess').style.display = 'block';
-                    setTimeout(() => {
-                        document.getElementById('ssidSuccess').style.display = 'none';
-                    }, 5000);
+                if (data.success) {
+                    alert('SSID berhasil diupdate');
+                    window.location.reload();
                 } else {
-                    throw new Error(result.error || 'Failed to update SSID');
+                    throw new Error(data.message || 'Gagal mengupdate SSID');
                 }
             } catch (error) {
-                alert('Error: ' + error.message);
+                console.error('Error:', error);
+                alert('Terjadi kesalahan saat mengupdate SSID: ' + error.message);
             } finally {
-                button.disabled = false;
-                spinner.style.display = 'none';
+                // Hide spinner and enable button
+                ssidSpinner.style.display = 'none';
+                updateSsidButton.disabled = false;
             }
         });
 
@@ -399,35 +398,41 @@
         document.getElementById('passwordForm').addEventListener('submit', async function(e) {
             e.preventDefault();
             
+            const password = document.getElementById('password').value;
             const button = document.getElementById('updatePasswordButton');
             const spinner = document.getElementById('passwordSpinner');
-            button.disabled = true;
-            spinner.style.display = 'inline-block';
             
             try {
-                const response = await fetch('/update-wifi-password', {
+                // Show spinner and disable button
+                button.disabled = true;
+                spinner.style.display = 'inline-block';
+                
+                const response = await fetch('/update-wifi', {  // Menggunakan endpoint yang sama
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
                     },
                     body: JSON.stringify({
-                        password: document.getElementById('password').value
+                        password: password
                     })
                 });
 
                 const result = await response.json();
                 
-                if (response.ok) {
+                if (result.success) {
                     document.getElementById('passwordSuccess').style.display = 'block';
                     setTimeout(() => {
                         document.getElementById('passwordSuccess').style.display = 'none';
-                    }, 5000);
+                        window.location.reload();
+                    }, 2000);
                 } else {
-                    throw new Error(result.error || 'Failed to update Password');
+                    throw new Error(result.message || 'Gagal mengupdate Password');
                 }
             } catch (error) {
+                console.error('Error:', error);
                 alert('Error: ' + error.message);
             } finally {
+                // Hide spinner and enable button
                 button.disabled = false;
                 spinner.style.display = 'none';
             }

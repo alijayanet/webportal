@@ -299,179 +299,108 @@ function encodeDeviceId(deviceId) {
 }
 
 // Update SSID endpoint
-app.post('/update-wifi-ssid', async (req, res) => {
-    if (!req.session.username || !req.session.deviceId) {
-        console.log('Unauthorized attempt to update SSID');
-        return res.status(401).json({ error: 'Unauthorized' });
-    }
-
-    const { ssid } = req.body;
-    
-    // Validate input
-    if (!ssid) {
-        return res.status(400).json({ error: 'SSID is required' });
-    }
-
+app.post('/update-wifi', async (req, res) => {
     try {
-        const encodedDeviceId = encodeDeviceId(req.session.deviceId);
-        console.log('Updating SSID for device:', req.session.deviceId);
-        console.log('Encoded device ID:', encodedDeviceId);
-        console.log('New SSID:', ssid);
+        const { ssid, password } = req.body;
+        const deviceId = req.session.deviceId;
 
-        // First check if device exists
-        try {
-            const deviceCheck = await axios.get(`${process.env.GENIEACS_URL}/devices/${encodedDeviceId}`, {
-                auth: {
-                    username: process.env.GENIEACS_USERNAME,
-                    password: process.env.GENIEACS_PASSWORD
-                }
-            });
-        } catch (error) {
-            if (error.response?.status === 404) {
-                return res.status(404).json({ 
-                    error: 'Device tidak ditemukan atau offline',
-                    details: 'Pastikan perangkat terhubung dan coba lagi'
-                });
-            }
-            throw error;
+        console.log('Update WiFi Request:', {
+            deviceId,
+            ssid,
+            password: password ? '********' : undefined
+        });
+
+        if (!deviceId) {
+            throw new Error('Device ID tidak valid');
         }
 
-        // Set SSID
-        const ssidResponse = await axios.post(`${process.env.GENIEACS_URL}/devices/${encodedDeviceId}/tasks`, {
-            name: "setParameterValues",
-            parameterValues: [
+        // Encode device ID dengan benar
+        const encodedDeviceId = deviceId.replace(/-S-/, '%2DS-');
+        console.log('Original device ID:', deviceId);
+        console.log('Encoded device ID:', encodedDeviceId);
+
+        // Cek device terlebih dahulu
+        const deviceCheck = await axios.get(`${process.env.GENIEACS_URL}/devices`, {
+            params: {
+                query: JSON.stringify({ "_id": deviceId })
+            },
+            auth: {
+                username: process.env.GENIEACS_USERNAME,
+                password: process.env.GENIEACS_PASSWORD
+            }
+        });
+
+        if (!deviceCheck.data || deviceCheck.data.length === 0) {
+            throw new Error('Device tidak ditemukan');
+        }
+
+        const actualDeviceId = deviceCheck.data[0]._id;
+        console.log('Actual device ID from server:', actualDeviceId);
+
+        // Update SSID atau Password
+        const parameterValues = [];
+        
+        if (ssid) {
+            parameterValues.push(
                 ["InternetGatewayDevice.LANDevice.1.WLANConfiguration.1.SSID", ssid, "xsd:string"]
-            ]
-        }, {
-            auth: {
-                username: process.env.GENIEACS_USERNAME,
-                password: process.env.GENIEACS_PASSWORD
-            }
-        });
-
-        console.log('SSID update response:', ssidResponse.status, ssidResponse.data);
-
-        // Apply changes
-        const applyResponse = await axios.post(`${process.env.GENIEACS_URL}/devices/${encodedDeviceId}/tasks`, {
-            name: "setParameterValues",
-            parameterValues: [
-                ["InternetGatewayDevice.LANDevice.1.WLANConfiguration.1.X_BROADCOM_COM_ApplyConfiguration", "1", "xsd:string"]
-            ]
-        }, {
-            auth: {
-                username: process.env.GENIEACS_USERNAME,
-                password: process.env.GENIEACS_PASSWORD
-            }
-        });
-
-        console.log('Apply configuration response:', applyResponse.status, applyResponse.data);
-        console.log('SSID updated successfully');
-        res.json({ success: true, message: 'SSID updated successfully' });
-    } catch (error) {
-        console.error('Update SSID error:', {
-            message: error.message,
-            status: error.response?.status,
-            statusText: error.response?.statusText,
-            data: error.response?.data,
-            config: {
-                url: error.config?.url,
-                method: error.config?.method,
-                data: error.config?.data
-            }
-        });
-        
-        let errorMessage = 'Gagal mengupdate SSID';
-        
-        if (error.response?.data?.error) {
-            errorMessage = error.response.data.error;
-        } else if (error.response?.status === 404) {
-            errorMessage = 'Device tidak ditemukan atau offline';
-        } else if (error.response?.status === 401) {
-            errorMessage = 'Autentikasi dengan server GenieACS gagal';
+            );
         }
-        
-        res.status(500).json({ 
-            error: errorMessage,
-            details: error.response?.data || error.message
-        });
-    }
-});
 
-// Update Password endpoint
-app.post('/update-wifi-password', async (req, res) => {
-    if (!req.session.username || !req.session.deviceId) {
-        console.log('Unauthorized attempt to update Password');
-        return res.status(401).json({ error: 'Unauthorized' });
-    }
+        if (password) {
+            parameterValues.push(
+                // Password paths sesuai dengan virtual parameter
+                ["InternetGatewayDevice.LANDevice.1.WLANConfiguration.1.KeyPassphrase", password, "xsd:string"],
+                ["InternetGatewayDevice.LANDevice.1.WLANConfiguration.1.PreSharedKey.1.KeyPassphrase", password, "xsd:string"],
+                ["InternetGatewayDevice.LANDevice.1.WLANConfiguration.1.PreSharedKey.1.PreSharedKey", password, "xsd:string"],
+                // Tambahan path untuk memastikan password terupdate
+                ["Device.WiFi.AccessPoint.1.Security.KeyPassphrase", password, "xsd:string"],
+                ["Device.WiFi.AccessPoint.1.Security.PreSharedKey", password, "xsd:string"]
+            );
 
-    const { password } = req.body;
-    
-    // Validate input
-    if (!password) {
-        return res.status(400).json({ error: 'Password harus diisi' });
-    }
-    
-    if (password.length < 8) {
-        return res.status(400).json({ error: 'Password minimal 8 karakter' });
-    }
+            // Tambah task untuk refresh setelah update password
+            const refreshTask = {
+                name: "refreshObject",
+                objectName: "InternetGatewayDevice.LANDevice.1.WLANConfiguration.1"
+            };
 
-    try {
-        const encodedDeviceId = encodeDeviceId(req.session.deviceId);
-        console.log('Updating Password for device:', req.session.deviceId);
-        console.log('Encoded device ID:', encodedDeviceId);
-        console.log('Password length:', password.length);
-
-        // First check if device exists
-        try {
-            const deviceCheck = await axios.get(`${process.env.GENIEACS_URL}/devices/${encodedDeviceId}`, {
-                auth: {
-                    username: process.env.GENIEACS_USERNAME,
-                    password: process.env.GENIEACS_PASSWORD
+            // Kirim task refresh
+            await axios.post(
+                `${process.env.GENIEACS_URL}/devices/${encodeURIComponent(actualDeviceId)}/tasks`,
+                refreshTask,
+                {
+                    auth: {
+                        username: process.env.GENIEACS_USERNAME,
+                        password: process.env.GENIEACS_PASSWORD
+                    }
                 }
-            });
-        } catch (error) {
-            if (error.response?.status === 404) {
-                return res.status(404).json({ 
-                    error: 'Device tidak ditemukan atau offline',
-                    details: 'Pastikan perangkat terhubung dan coba lagi'
-                });
-            }
-            throw error;
+            );
         }
 
-        // Set Password
-        const passwordResponse = await axios.post(`${process.env.GENIEACS_URL}/devices/${encodedDeviceId}/tasks`, {
-            name: "setParameterValues",
-            parameterValues: [
-                ["InternetGatewayDevice.LANDevice.1.WLANConfiguration.1.KeyPassphrase", password, "xsd:string"]
-            ]
-        }, {
-            auth: {
-                username: process.env.GENIEACS_USERNAME,
-                password: process.env.GENIEACS_PASSWORD
-            }
-        });
+        if (parameterValues.length > 0) {
+            const response = await axios.post(
+                `${process.env.GENIEACS_URL}/devices/${encodeURIComponent(actualDeviceId)}/tasks`,
+                {
+                    name: "setParameterValues",
+                    parameterValues: parameterValues
+                },
+                {
+                    auth: {
+                        username: process.env.GENIEACS_USERNAME,
+                        password: process.env.GENIEACS_PASSWORD
+                    }
+                }
+            );
 
-        console.log('Password update response:', passwordResponse.status, passwordResponse.data);
+            console.log('Update response:', response.status, response.data);
 
-        // Apply changes
-        const applyResponse = await axios.post(`${process.env.GENIEACS_URL}/devices/${encodedDeviceId}/tasks`, {
-            name: "setParameterValues",
-            parameterValues: [
-                ["InternetGatewayDevice.LANDevice.1.WLANConfiguration.1.X_BROADCOM_COM_ApplyConfiguration", "1", "xsd:string"]
-            ]
-        }, {
-            auth: {
-                username: process.env.GENIEACS_USERNAME,
-                password: process.env.GENIEACS_PASSWORD
-            }
-        });
+            // Tunggu sebentar untuk memastikan perubahan diterapkan
+            await new Promise(resolve => setTimeout(resolve, 3000));
+        }
 
-        console.log('Apply configuration response:', applyResponse.status, applyResponse.data);
-        console.log('Password updated successfully');
-        res.json({ success: true, message: 'Password berhasil diupdate' });
+        res.json({ success: true, message: 'Pengaturan WiFi berhasil diupdate' });
+
     } catch (error) {
-        console.error('Update Password error:', {
+        console.error('Update WiFi error:', {
             message: error.message,
             status: error.response?.status,
             statusText: error.response?.statusText,
@@ -483,19 +412,9 @@ app.post('/update-wifi-password', async (req, res) => {
             }
         });
         
-        let errorMessage = 'Gagal mengupdate password';
-        
-        if (error.response?.data?.error) {
-            errorMessage = error.response.data.error;
-        } else if (error.response?.status === 404) {
-            errorMessage = 'Device tidak ditemukan atau offline';
-        } else if (error.response?.status === 401) {
-            errorMessage = 'Autentikasi dengan server GenieACS gagal';
-        }
-        
         res.status(500).json({ 
-            error: errorMessage,
-            details: error.response?.data || error.message
+            success: false, 
+            message: error.message || 'Gagal mengupdate pengaturan WiFi'
         });
     }
 });
