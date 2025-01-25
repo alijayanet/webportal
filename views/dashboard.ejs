@@ -201,9 +201,11 @@
                 <h5 class="mb-0">
                     <i class="fas fa-server me-2"></i>Informasi Perangkat
                 </h5>
-                <span class="status-badge <%= deviceData.status === 'online' ? 'status-good' : 'status-warning' %>">
-                    <i class="fas fa-circle me-2"></i><%= deviceData.status === 'online' ? 'Online' : 'Offline' %>
-                </span>
+                <div>
+                    <button class="btn btn-outline-primary btn-sm" onclick="refreshDevice()">
+                        <i class="fas fa-sync-alt me-1"></i>Refresh Data
+                    </button>
+                </div>
             </div>
             <div class="card-body">
                 <div class="info-grid">
@@ -437,6 +439,59 @@
                 spinner.style.display = 'none';
             }
         });
+
+        // Auto refresh setiap 5 menit
+        setInterval(refreshDevice, 300000);
+
+        async function refreshDevice() {
+            const refreshButton = document.querySelector('.btn-outline-primary');
+            const originalContent = refreshButton.innerHTML;
+            
+            try {
+                // Disable button dan tampilkan loading
+                refreshButton.disabled = true;
+                refreshButton.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Refreshing...';
+                
+                // Kirim request refresh
+                const response = await fetch('/refresh-device', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                const data = await response.json();
+                
+                if (data.success) {
+                    // Tampilkan toast notification
+                    const toast = document.createElement('div');
+                    toast.className = 'alert alert-success position-fixed top-0 end-0 m-3';
+                    toast.style.zIndex = '1050';
+                    toast.innerHTML = `
+                        <i class="fas fa-check-circle me-2"></i>
+                        Data berhasil di-refresh
+                    `;
+                    document.body.appendChild(toast);
+                    
+                    // Hapus toast setelah 3 detik
+                    setTimeout(() => {
+                        toast.remove();
+                    }, 3000);
+                    
+                    // Reload halaman
+                    window.location.reload();
+                } else {
+                    throw new Error(data.message || 'Gagal me-refresh data');
+                }
+            } catch (error) {
+                console.error('Refresh error:', error);
+                alert('Terjadi kesalahan saat me-refresh data: ' + error.message);
+            } finally {
+                // Kembalikan button ke kondisi awal
+                refreshButton.disabled = false;
+                refreshButton.innerHTML = originalContent;
+            }
+        }
     </script>
 </body>
 </html>

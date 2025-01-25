@@ -548,6 +548,55 @@ app.get('/logout', (req, res) => {
     res.redirect('/');
 });
 
+// Add this endpoint to handle device refresh
+app.post('/refresh-device', async (req, res) => {
+    try {
+        const deviceId = req.session.deviceId;
+        
+        if (!deviceId) {
+            throw new Error('Device ID tidak valid');
+        }
+
+        const encodedDeviceId = encodeURIComponent(deviceId);
+        console.log('Refreshing device:', encodedDeviceId);
+
+        // Refresh all parameters
+        await axios.post(
+            `${process.env.GENIEACS_URL}/devices/${encodedDeviceId}/tasks?connection_request`,
+            {
+                name: "refreshObject",
+                objectName: ""  // Empty string means refresh all parameters
+            },
+            {
+                auth: {
+                    username: process.env.GENIEACS_USERNAME,
+                    password: process.env.GENIEACS_PASSWORD
+                }
+            }
+        );
+
+        // Wait for refresh to complete
+        await new Promise(resolve => setTimeout(resolve, 3000));
+
+        res.json({ 
+            success: true, 
+            message: 'Device berhasil di-refresh' 
+        });
+
+    } catch (error) {
+        console.error('Refresh device error:', {
+            message: error.message,
+            status: error.response?.status,
+            data: error.response?.data
+        });
+        
+        res.status(500).json({ 
+            success: false, 
+            message: `Gagal me-refresh device: ${error.message}` 
+        });
+    }
+});
+
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
     console.log(`Server berjalan di port ${PORT}`);
