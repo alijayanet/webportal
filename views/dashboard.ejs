@@ -3,136 +3,286 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard</title>
+    <title>Router Dashboard</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
         body {
-            background: #f8f9fa;
-            min-height: 100vh;
+            background: #f0f2f5;
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
         }
         .navbar {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            padding: 1rem 2rem;
+            background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+            padding: 1rem;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
         }
         .navbar-brand {
             color: white !important;
             font-weight: 600;
-        }
-        .main-container {
-            padding: 2rem;
+            font-size: 1.25rem;
         }
         .card {
             border: none;
-            border-radius: 15px;
-            box-shadow: 0 5px 20px rgba(0,0,0,0.1);
-            margin-bottom: 2rem;
+            border-radius: 16px;
+            background: white;
+            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -1px rgba(0,0,0,0.06);
+            margin-bottom: 1.5rem;
+            transition: transform 0.2s ease;
+        }
+        .card:hover {
+            transform: translateY(-2px);
         }
         .card-header {
             background: white;
-            border-bottom: 1px solid #eee;
-            padding: 1.5rem;
-            border-radius: 15px 15px 0 0 !important;
+            border-bottom: 1px solid rgba(0,0,0,0.05);
+            padding: 1.25rem;
+            border-radius: 16px 16px 0 0 !important;
         }
-        .card-body {
-            padding: 1.5rem;
-        }
-        .info-box {
-            background: #f8f9fa;
-            border-radius: 10px;
-            padding: 1.5rem;
-            margin-bottom: 1rem;
-        }
-        .info-label {
-            color: #6c757d;
-            font-size: 0.9rem;
-            margin-bottom: 0.5rem;
-        }
-        .info-value {
+        .card-header h5 {
             font-size: 1.1rem;
             font-weight: 600;
-            color: #2d3748;
+            color: #1f2937;
+        }
+        .card-body {
+            padding: 1.25rem;
+        }
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 1rem;
+        }
+        .info-item {
+            background: #f8fafc;
+            padding: 1rem;
+            border-radius: 12px;
+            transition: all 0.2s ease;
+        }
+        .info-item:hover {
+            background: #f1f5f9;
+        }
+        .info-label {
+            color: #6b7280;
+            font-size: 0.875rem;
+            font-weight: 500;
+            margin-bottom: 0.25rem;
+        }
+        .info-value {
+            color: #1f2937;
+            font-weight: 600;
+            font-size: 1rem;
+        }
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 0.25rem 0.75rem;
+            border-radius: 9999px;
+            font-size: 0.875rem;
+            font-weight: 500;
+        }
+        .status-good {
+            background: #dcfce7;
+            color: #166534;
+        }
+        .status-warning {
+            background: #fef3c7;
+            color: #92400e;
+        }
+        .form-control {
+            border: 1px solid #e5e7eb;
+            border-radius: 12px;
+            padding: 0.75rem 1rem;
+            font-size: 0.95rem;
+            transition: all 0.2s ease;
+        }
+        .form-control:focus {
+            border-color: #4f46e5;
+            box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
+        }
+        .form-label {
+            font-weight: 500;
+            color: #374151;
+        }
+        .btn {
+            padding: 0.75rem 1.5rem;
+            border-radius: 12px;
+            font-weight: 500;
+            transition: all 0.2s ease;
         }
         .btn-primary {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
             border: none;
-            border-radius: 10px;
-            padding: 0.8rem 2rem;
-            font-weight: 600;
-            transition: all 0.3s ease;
         }
         .btn-primary:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+            background: linear-gradient(135deg, #4338ca 0%, #6d28d9 100%);
+            transform: translateY(-1px);
+        }
+        .loading-spinner {
+            display: none;
+            margin-right: 8px;
+        }
+        #updateSuccess {
+            display: none;
+            margin-top: 1rem;
+        }
+        .text-muted {
+            color: #6b7280 !important;
+            font-size: 0.875rem;
+        }
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1.5rem;
+        }
+        .info-item {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+        .info-label {
+            font-size: 0.875rem;
+            color: #6b7280;
+            font-weight: 500;
+        }
+        .overview-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            display: inline-block;
+        }
+        .overview-dot[data-chart="online"] {
+            background-color: #10b981;
+        }
+        .overview-dot[data-chart="signal"] {
+            background-color: #3b82f6;
+        }
+        .device-link {
+            color: #4f46e5;
+            text-decoration: none;
+        }
+        .device-link:hover {
+            text-decoration: underline;
+        }
+        .tags-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+        }
+        .badge {
+            font-weight: 500;
+            padding: 0.35em 0.65em;
         }
     </style>
 </head>
 <body>
-    <nav class="navbar navbar-expand-lg navbar-dark">
+    <nav class="navbar navbar-dark">
         <div class="container">
             <a class="navbar-brand" href="#">
-                <i class="fas fa-wifi me-2"></i>Router Management
+                <i class="fas fa-wifi me-2"></i>Router Dashboard
             </a>
             <div class="d-flex align-items-center">
-                <span class="text-white me-3">
-                    <i class="fas fa-user me-2"></i><%= deviceData.username %>
-                </span>
                 <a href="/logout" class="btn btn-light btn-sm">
-                    <i class="fas fa-sign-out-alt"></i>
+                    <i class="fas fa-sign-out-alt me-2"></i>Keluar
                 </a>
             </div>
         </div>
     </nav>
 
-    <div class="container main-container">
+    <div class="container py-4">
         <% if (error) { %>
-            <div class="alert alert-danger">
-                <i class="fas fa-exclamation-circle me-2"></i>
+            <div class="alert alert-warning rounded-3">
+                <i class="fas fa-exclamation-triangle me-2"></i>
                 <%= error %>
             </div>
         <% } %>
 
-        <!-- Device Info Card -->
-        <div class="card mb-4">
-            <div class="card-header">
-                <h5 class="card-title mb-0">
-                    <i class="fas fa-router me-2"></i>Informasi Perangkat
+        <!-- Device Information Card -->
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">
+                    <i class="fas fa-server me-2"></i>Informasi Perangkat
                 </h5>
+                <span class="status-badge <%= deviceData.status === 'online' ? 'status-good' : 'status-warning' %>">
+                    <i class="fas fa-circle me-2"></i><%= deviceData.status === 'online' ? 'Online' : 'Offline' %>
+                </span>
             </div>
             <div class="card-body">
-                <div class="row">
-                    <div class="col-md-6">
-                        <div class="info-box">
-                            <div class="info-label">
-                                <i class="fas fa-microchip me-2"></i>Model
-                            </div>
-                            <div class="info-value"><%= deviceData.model %></div>
+                <div class="info-grid">
+                    <div class="info-item">
+                        <div class="info-label">Status</div>
+                        <div class="inform d-flex align-items-center">
+                            <span class="parameter me-2"><%= deviceData.ponMode %></span>
+                            <span class="overview-dot" data-chart="online"></span>
                         </div>
                     </div>
-                    <div class="col-md-6">
-                        <div class="info-box">
-                            <div class="info-label">
-                                <i class="fas fa-barcode me-2"></i>Serial Number
-                            </div>
-                            <div class="info-value"><%= deviceData.serialNumber %></div>
+                    <div class="info-item">
+                        <div class="info-label">PPP Username</div>
+                        <div class="device-link"><%= deviceData.pppUsername %></div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">Wifi</div>
+                        <div class="info-value"><%= deviceData.ssid %></div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">SANDI</div>
+                        <div class="info-value">********</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">Konek</div>
+                        <div class="info-value"><%= deviceData.userConnected %></div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">RX Power</div>
+                        <div class="d-flex align-items-center">
+                            <span class="parameter me-2"><%= deviceData.rxPower %> dBm</span>
+                            <span class="overview-dot" data-chart="signal"></span>
                         </div>
                     </div>
-                    <div class="col-md-6">
-                        <div class="info-box">
-                            <div class="info-label">
-                                <i class="fas fa-wifi me-2"></i>SSID
-                            </div>
-                            <div class="info-value"><%= deviceData.ssid %></div>
-                        </div>
+                    <div class="info-item">
+                        <div class="info-label">IP Wan</div>
+                        <a href="http://<%= encodeURIComponent(deviceData.pppIP) %>" target="_blank" class="info-value">
+                            <%= deviceData.pppIP %>
+                        </a>
                     </div>
-                    <div class="col-md-6">
-                        <div class="info-box">
-                            <div class="info-label">
-                                <i class="fas fa-users me-2"></i>User Terhubung
-                            </div>
-                            <div class="info-value">
-                                <%= parseInt(deviceData.userConnected) > 0 ? deviceData.userConnected + ' perangkat' : 'Tidak ada' %>
-                            </div>
+                    <div class="info-item">
+                        <div class="info-label">Product class</div>
+                        <div class="info-value"><%= deviceData.productClass %></div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">PON Mode</div>
+                        <div class="info-value"><%= deviceData.ponMode %></div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">Temp</div>
+                        <div class="info-value"><%= deviceData.temp %> ℃</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">IP TR069</div>
+                        <a href="http://<%= encodeURIComponent(deviceData.tr069IP) %>" target="_blank" class="info-value">
+                            <%= deviceData.tr069IP %>
+                        </a>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">Uptime</div>
+                        <div class="info-value"><%= deviceData.uptime %></div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">Serial number</div>
+                        <div class="device-link"><%= deviceData.serialNumber %></div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">Last inform</div>
+                        <div class="info-value"><%= deviceData.lastInform %></div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">Lokasi</div>
+                        <div class="tags-container" data-writable="true">
+                            <% if (deviceData.tags && Array.isArray(deviceData.tags)) { %>
+                                <% deviceData.tags.forEach(tag => { %>
+                                    <span class="badge bg-primary me-1"><%= tag %></span>
+                                <% }) %>
+                            <% } else { %>
+                                <span class="text-muted">Tidak ada lokasi</span>
+                            <% } %>
                         </div>
                     </div>
                 </div>
@@ -142,127 +292,98 @@
         <!-- WiFi Settings Card -->
         <div class="card">
             <div class="card-header">
-                <h5 class="card-title mb-0">
+                <h5 class="mb-0">
                     <i class="fas fa-wifi me-2"></i>Pengaturan WiFi
                 </h5>
             </div>
             <div class="card-body">
-                <!-- SSID Form -->
-                <form id="ssidForm" class="mb-4">
-                    <div class="row">
-                        <div class="col-md-8">
-                            <div class="mb-3">
-                                <label for="ssid" class="form-label">SSID (Nama Jaringan WiFi)</label>
-                                <input type="text" class="form-control" id="ssid" name="ssid" 
-                                       value="<%= deviceData.ssid %>" required>
-                            </div>
-                        </div>
-                        <div class="col-md-4 d-flex align-items-end">
-                            <button type="submit" class="btn btn-primary w-100" id="updateSsidBtn">
-                                <span class="spinner-border spinner-border-sm d-none" role="status"></span>
-                                <i class="fas fa-save me-2"></i>Update SSID
+                <form id="wifiForm" class="needs-validation" novalidate>
+                    <div class="mb-4">
+                        <label for="ssid" class="form-label">Nama WiFi (SSID)</label>
+                        <input type="text" class="form-control" id="ssid" name="ssid" 
+                               value="<%= deviceData.ssid || '' %>" required>
+                        <div class="invalid-feedback">Nama WiFi harus diisi</div>
+                    </div>
+                    <div class="mb-4">
+                        <label for="password" class="form-label">Password WiFi</label>
+                        <div class="input-group">
+                            <input type="password" class="form-control" id="password" name="password" 
+                                   value="<%= deviceData.password || '' %>" required minlength="8">
+                            <button class="btn btn-outline-secondary" type="button" onclick="togglePassword()">
+                                <i class="fas fa-eye"></i>
                             </button>
                         </div>
+                        <div class="invalid-feedback">Password minimal 8 karakter</div>
                     </div>
+                    <button type="submit" class="btn btn-primary" id="updateButton">
+                        <span class="loading-spinner">
+                            <i class="fas fa-spinner fa-spin"></i>
+                        </span>
+                        Update WiFi Settings
+                    </button>
                 </form>
-
-                <hr>
-
-                <!-- Password Form -->
-                <form id="passwordForm">
-                    <div class="row">
-                        <div class="col-md-8">
-                            <div class="mb-3">
-                                <label for="password" class="form-label">Password WiFi</label>
-                                <div class="input-group">
-                                    <input type="password" class="form-control" id="password" 
-                                           name="password" placeholder="Masukkan password baru" minlength="8">
-                                    <button type="button" class="btn btn-outline-secondary" 
-                                            onclick="togglePasswordVisibility('password')">
-                                        <i class="fas fa-eye"></i>
-                                    </button>
-                                </div>
-                                <small class="text-muted">Minimal 8 karakter</small>
-                            </div>
-                        </div>
-                        <div class="col-md-4 d-flex align-items-end">
-                            <button type="submit" class="btn btn-primary w-100" id="updatePasswordBtn">
-                                <span class="spinner-border spinner-border-sm d-none" role="status"></span>
-                                <i class="fas fa-key me-2"></i>Update Password
-                            </button>
-                        </div>
-                    </div>
-                </form>
+                <div class="alert alert-success" id="updateSuccess">
+                    <i class="fas fa-check-circle me-2"></i>
+                    Pengaturan WiFi berhasil diperbarui
+                </div>
             </div>
         </div>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-        // Toggle password visibility
-        function togglePasswordVisibility(inputId) {
-            const input = document.getElementById(inputId);
-            const type = input.type === 'password' ? 'text' : 'password';
-            input.type = type;
+        function togglePassword() {
+            const passwordInput = document.getElementById('password');
+            const eyeIcon = document.querySelector('.fa-eye');
+            
+            if (passwordInput.type === 'password') {
+                passwordInput.type = 'text';
+                eyeIcon.classList.remove('fa-eye');
+                eyeIcon.classList.add('fa-eye-slash');
+            } else {
+                passwordInput.type = 'password';
+                eyeIcon.classList.remove('fa-eye-slash');
+                eyeIcon.classList.add('fa-eye');
+            }
         }
 
-        // Handle SSID update
-        document.getElementById('ssidForm').addEventListener('submit', async (e) => {
+        document.getElementById('wifiForm').addEventListener('submit', async function(e) {
             e.preventDefault();
-            const ssid = document.getElementById('ssid').value;
-            const button = document.getElementById('updateSsidBtn');
-            const spinner = button.querySelector('.spinner-border');
+            
+            // Show loading state
+            const button = document.getElementById('updateButton');
+            const spinner = document.querySelector('.loading-spinner');
+            button.disabled = true;
+            spinner.style.display = 'inline-block';
             
             try {
-                button.disabled = true;
-                spinner.classList.remove('d-none');
-                
-                const response = await fetch('/update-wifi/ssid', {
+                const response = await fetch('/update-wifi', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ ssid })
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        ssid: document.getElementById('ssid').value,
+                        password: document.getElementById('password').value
+                    })
                 });
-                
-                const data = await response.json();
-                alert(data.message || data.error);
-                if (data.success) {
-                    location.reload();
-                }
-            } catch (error) {
-                alert('Gagal mengupdate SSID');
-            } finally {
-                button.disabled = false;
-                spinner.classList.add('d-none');
-            }
-        });
 
-        // Handle password update
-        document.getElementById('passwordForm').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const password = document.getElementById('password').value;
-            const button = document.getElementById('updatePasswordBtn');
-            const spinner = button.querySelector('.spinner-border');
-            
-            try {
-                button.disabled = true;
-                spinner.classList.remove('d-none');
+                const result = await response.json();
                 
-                const response = await fetch('/update-wifi/password', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ password })
-                });
-                
-                const data = await response.json();
-                alert(data.message || data.error);
-                if (data.success) {
-                    document.getElementById('password').value = '';
+                if (response.ok) {
+                    document.getElementById('updateSuccess').style.display = 'block';
+                    setTimeout(() => {
+                        document.getElementById('updateSuccess').style.display = 'none';
+                    }, 5000);
+                } else {
+                    throw new Error(result.error || 'Failed to update WiFi settings');
                 }
             } catch (error) {
-                alert('Gagal mengupdate password');
+                alert('Error: ' + error.message);
             } finally {
+                // Reset loading state
                 button.disabled = false;
-                spinner.classList.add('d-none');
+                spinner.style.display = 'none';
             }
         });
     </script>

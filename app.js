@@ -93,28 +93,12 @@ app.get('/dashboard', async (req, res) => {
     }
 
     try {
-        // Get device data dengan virtual parameters
-        const deviceResponse = await axios.get(`${process.env.GENIEACS_URL}/devices`, {
+        console.log('Fetching device data for:', req.session.deviceId);
+
+        // Use the correct endpoint with query parameter
+        const deviceResponse = await axios.get(`${process.env.GENIEACS_URL}/devices/`, {
             params: {
-                query: JSON.stringify({ "_id": req.session.deviceId }),
-                projection: JSON.stringify([
-                    "_id",
-                    "_tags",
-                    // WiFi parameters
-                    "InternetGatewayDevice.LANDevice.1.WLANConfiguration.1.SSID._value",
-                    "InternetGatewayDevice.LANDevice.1.WLANConfiguration.1.KeyPassphrase._value",
-                    "InternetGatewayDevice.LANDevice.1.WLANConfiguration.1.PreSharedKey._value",
-                    // Connected devices
-                    "InternetGatewayDevice.LANDevice.1.WLANConfiguration.1.TotalAssociations._value",
-                    // Virtual parameters
-                    "VirtualParameters.WifiPassword._value",
-                    "VirtualParameters.WifiSSID._value",
-                    "VirtualParameters.ConnectedDevices._value",
-                    // Alternative paths
-                    "Device.WiFi.AccessPoint.1.Security.KeyPassphrase._value",
-                    "Device.WiFi.AccessPoint.1.SSIDReference._value",
-                    "Device.WiFi.AccessPoint.1.AssociatedDeviceNumberOfEntries._value"
-                ])
+                query: JSON.stringify({ "_id": req.session.deviceId })
             },
             auth: {
                 username: process.env.GENIEACS_USERNAME,
@@ -122,169 +106,174 @@ app.get('/dashboard', async (req, res) => {
             }
         });
 
-        console.log('Raw Response:', JSON.stringify(deviceResponse.data, null, 2));
-
-        if (!deviceResponse.data || !deviceResponse.data.length) {
+        if (!deviceResponse.data || !Array.isArray(deviceResponse.data) || deviceResponse.data.length === 0) {
             throw new Error('Device not found');
         }
 
         const device = deviceResponse.data[0];
-        
-        // Debug log
-        console.log('Device data received:', JSON.stringify(device, null, 2));
 
-        // Parse device ID untuk informasi dasar
-        const [manufacturer, model, serialNumber] = req.session.deviceId.split('-');
-
-        // Ekstrak SSID dari berbagai kemungkinan path
-        let ssid = 'N/A';
-        const ssidPaths = [
-            device?.InternetGatewayDevice?.LANDevice?.[1]?.WLANConfiguration?.[1]?.SSID?._value,
-            device?.VirtualParameters?.WifiSSID?._value,
-            device?.Device?.WiFi?.AccessPoint?.[1]?.SSIDReference?._value
-        ];
-
-        for (const path of ssidPaths) {
-            if (path) {
-                ssid = path;
-                break;
-            }
-        }
-
-        // Ekstrak user connected dari berbagai kemungkinan path
-        let userConnected = '0';
-        const connectedPaths = [
-            device?.InternetGatewayDevice?.LANDevice?.[1]?.WLANConfiguration?.[1]?.TotalAssociations?._value,
-            device?.VirtualParameters?.ConnectedDevices?._value,
-            device?.Device?.WiFi?.AccessPoint?.[1]?.AssociatedDeviceNumberOfEntries?._value
-        ];
-
-        for (const path of connectedPaths) {
-            if (path !== undefined && path !== null) {
-                userConnected = path.toString();
-                break;
-            }
-        }
-
+        // Extract all required parameters
         const deviceData = {
-            username: req.session.username,
-            model: model || 'HG8245A',
-            serialNumber: serialNumber || 'N/A',
-            ssid: ssid,
-            userConnected: userConnected
+            status: getNestedValue(device, 'InternetGatewayDevice.WANDevice.1.WANConnectionDevice.1.WANPPPConnection.1.ConnectionStatus') || 'offline',
+            ponMode: getNestedValue(device, 'InternetGatewayDevice.WANDevice.1.WANConnectionDevice.1.WANPPPConnection.1.ConnectionStatus'),
+            pppUsername: getNestedValue(device, 'InternetGatewayDevice.WANDevice.1.WANConnectionDevice.1.WANPPPConnection.1.Username'),
+            ssid: getNestedValue(device, 'InternetGatewayDevice.LANDevice.1.WLANConfiguration.1.SSID'),
+            password: getNestedValue(device, 'InternetGatewayDevice.LANDevice.1.WLANConfiguration.1.KeyPassphrase'),
+            userConnected: getNestedValue(device, 'InternetGatewayDevice.LANDevice.1.WLANConfiguration.1.TotalAssociations'),
+            rxPower: getNestedValue(device, 'InternetGatewayDevice.WANDevice.1.WANConnectionDevice.1.WANPPPConnection.1.Stats.X_CT-COM_Reconnection'),
+            pppIP: getNestedValue(device, 'InternetGatewayDevice.WANDevice.1.WANConnectionDevice.1.WANPPPConnection.1.ExternalIPAddress'),
+            productClass: getNestedValue(device, 'InternetGatewayDevice.DeviceInfo.ModelName'),
+            temp: getNestedValue(device, 'InternetGatewayDevice.DeviceInfo.UpTime'),
+            tr069IP: getNestedValue(device, 'InternetGatewayDevice.ManagementServer.ConnectionRequestURL'),
+            uptime: formatUptime(getNestedValue(device, 'InternetGatewayDevice.DeviceInfo.UpTime')),
+            serialNumber: getNestedValue(device, 'InternetGatewayDevice.DeviceInfo.SerialNumber') || device._id,
+            lastInform: new Date(device._lastInform || Date.now()).toLocaleString(),
+            tags: device._tags || []
         };
 
-        // Debug log
-        console.log('Processed device data:', deviceData);
-
-        res.render('dashboard', { deviceData, error: null });
+        res.render('dashboard', { 
+            deviceData,
+            error: null
+        });
 
     } catch (error) {
         console.error('Dashboard error:', {
             message: error.message,
-            response: error.response?.data,
             status: error.response?.status,
-            stack: error.stack
+            data: error.response?.data
         });
-
-        const [manufacturer, model, serialNumber] = req.session.deviceId.split('-');
-
+        
         res.render('dashboard', { 
+            error: 'Gagal mengambil data perangkat',
             deviceData: {
-                username: req.session.username,
-                model: model || 'HG8245A',
-                serialNumber: serialNumber || 'N/A',
+                status: 'offline',
+                ponMode: 'N/A',
+                pppUsername: 'N/A',
                 ssid: 'N/A',
-                userConnected: '0'
-            },
-            error: `Gagal mengambil data perangkat: ${error.message}`
+                password: 'N/A',
+                userConnected: '0',
+                rxPower: 'N/A',
+                pppIP: 'N/A',
+                productClass: 'N/A',
+                temp: 'N/A',
+                tr069IP: 'N/A',
+                uptime: 'N/A',
+                serialNumber: 'N/A',
+                lastInform: 'N/A',
+                tags: []
+            }
         });
     }
 });
 
-// Update WiFi settings (dipisah menjadi dua endpoint)
-app.post('/update-wifi/ssid', async (req, res) => {
+// Helper function to format uptime
+function formatUptime(seconds) {
+    if (!seconds) return 'N/A';
+    const days = Math.floor(seconds / 86400);
+    const hours = Math.floor((seconds % 86400) / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+    return `${days}d ${hours}h ${minutes}m`;
+}
+
+// Function to safely get nested value
+const getNestedValue = (obj, path) => {
+    try {
+        if (!obj || !path) return undefined;
+        
+        // Handle root level properties
+        if (path.startsWith('_')) {
+            return obj[path];
+        }
+
+        let current = obj;
+        const parts = path.split('.');
+        
+        for (const part of parts) {
+            if (!current) return undefined;
+            current = current[part];
+        }
+        
+        return current?._value;
+    } catch (error) {
+        console.error(`Error getting value for path ${path}:`, error);
+        return undefined;
+    }
+};
+
+// Update WiFi settings
+app.post('/update-wifi', async (req, res) => {
     if (!req.session.username || !req.session.deviceId) {
+        console.log('Unauthorized attempt to update WiFi settings');
         return res.status(401).json({ error: 'Unauthorized' });
     }
 
-    const { ssid } = req.body;
-    const deviceId = encodeURIComponent(req.session.deviceId);
+    const { ssid, password } = req.body;
     
-    try {
-        const task = {
-            name: "setParameterValues",
-            parameterValues: [
-                ["InternetGatewayDevice.LANDevice.1.WLANConfiguration.1.SSID", ssid, "xsd:string"],
-                ["InternetGatewayDevice.LANDevice.1.WLANConfiguration.1.Enable", "1", "xsd:boolean"]
-            ]
-        };
-
-        await axios.post(
-            `${process.env.GENIEACS_URL}/devices/${deviceId}/tasks`,
-            task,
-            {
-                auth: {
-                    username: process.env.GENIEACS_USERNAME,
-                    password: process.env.GENIEACS_PASSWORD
-                }
-            }
-        );
-
-        res.json({ success: true, message: 'SSID berhasil diupdate' });
-    } catch (error) {
-        console.error('Update SSID error:', error);
-        res.status(500).json({ success: false, error: 'Gagal mengupdate SSID' });
+    // Validate input
+    if (!ssid || !password) {
+        return res.status(400).json({ error: 'SSID and password are required' });
     }
-});
-
-app.post('/update-wifi/password', async (req, res) => {
-    if (!req.session.username || !req.session.deviceId) {
-        return res.status(401).json({ error: 'Unauthorized' });
+    
+    if (password.length < 8) {
+        return res.status(400).json({ error: 'Password must be at least 8 characters long' });
     }
 
-    const { password } = req.body;
-    const deviceId = encodeURIComponent(req.session.deviceId);
-    
     try {
-        const task = {
+        console.log('Updating WiFi settings for device:', req.session.deviceId);
+
+        // Set SSID
+        await axios.post(`${process.env.GENIEACS_URL}/devices/${req.session.deviceId}/tasks`, {
             name: "setParameterValues",
             parameterValues: [
-                ["InternetGatewayDevice.LANDevice.1.WLANConfiguration.1.BeaconType", "WPAand11i", "xsd:string"],
-                ["InternetGatewayDevice.LANDevice.1.WLANConfiguration.1.WPAAuthenticationMode", "PSKAuthentication", "xsd:string"],
-                ["InternetGatewayDevice.LANDevice.1.WLANConfiguration.1.WPAEncryptionModes", "AESEncryption", "xsd:string"],
-                ["InternetGatewayDevice.LANDevice.1.WLANConfiguration.1.PreSharedKey.1.PreSharedKey", password, "xsd:string"],
-                ["InternetGatewayDevice.LANDevice.1.WLANConfiguration.1.PreSharedKey.1.Enable", "1", "xsd:boolean"]
+                ["InternetGatewayDevice.LANDevice.1.WLANConfiguration.1.SSID", ssid, "xsd:string"]
             ]
-        };
-
-        await axios.post(
-            `${process.env.GENIEACS_URL}/devices/${deviceId}/tasks`,
-            task,
-            {
-                auth: {
-                    username: process.env.GENIEACS_USERNAME,
-                    password: process.env.GENIEACS_PASSWORD
-                }
+        }, {
+            auth: {
+                username: process.env.GENIEACS_USERNAME,
+                password: process.env.GENIEACS_PASSWORD
             }
-        );
+        });
 
-        // Tambahkan task reboot
-        await axios.post(
-            `${process.env.GENIEACS_URL}/devices/${deviceId}/tasks`,
-            { name: "reboot" },
-            {
-                auth: {
-                    username: process.env.GENIEACS_USERNAME,
-                    password: process.env.GENIEACS_PASSWORD
-                }
+        // Set Password
+        await axios.post(`${process.env.GENIEACS_URL}/devices/${req.session.deviceId}/tasks`, {
+            name: "setParameterValues",
+            parameterValues: [
+                ["InternetGatewayDevice.LANDevice.1.WLANConfiguration.1.KeyPassphrase", password, "xsd:string"]
+            ]
+        }, {
+            auth: {
+                username: process.env.GENIEACS_USERNAME,
+                password: process.env.GENIEACS_PASSWORD
             }
-        );
+        });
 
-        res.json({ success: true, message: 'Password berhasil diupdate. Device akan direstart.' });
+        // Apply changes
+        await axios.post(`${process.env.GENIEACS_URL}/devices/${req.session.deviceId}/tasks`, {
+            name: "setParameterValues",
+            parameterValues: [
+                ["InternetGatewayDevice.LANDevice.1.WLANConfiguration.1.X_BROADCOM_COM_ApplyConfiguration", "1", "xsd:string"]
+            ]
+        }, {
+            auth: {
+                username: process.env.GENIEACS_USERNAME,
+                password: process.env.GENIEACS_PASSWORD
+            }
+        });
+
+        console.log('WiFi settings updated successfully');
+        res.json({ success: true, message: 'WiFi settings updated successfully' });
     } catch (error) {
-        console.error('Update password error:', error);
-        res.status(500).json({ success: false, error: 'Gagal mengupdate password' });
+        console.error('Update WiFi error:', {
+            message: error.message,
+            status: error.response?.status,
+            statusText: error.response?.statusText,
+            data: error.response?.data
+        });
+        
+        res.status(500).json({ 
+            error: 'Failed to update WiFi settings',
+            details: error.response?.data || error.message
+        });
     }
 });
 
@@ -416,50 +405,6 @@ app.get('/logout', (req, res) => {
     req.session.destroy();
     res.redirect('/');
 });
-
-// Tambahkan fungsi untuk memformat uptime
-function formatUptime(uptimeStr) {
-    if (!uptimeStr) return 'N/A';
-    
-    // Jika uptimeStr sudah dalam format yang diinginkan, langsung kembalikan
-    if (typeof uptimeStr === 'string' && uptimeStr.includes('hari')) {
-        return uptimeStr;
-    }
-
-    // Jika dalam bentuk detik, konversi
-    const seconds = parseInt(uptimeStr);
-    if (isNaN(seconds)) return uptimeStr;
-    
-    const days = Math.floor(seconds / 86400);
-    const hours = Math.floor((seconds % 86400) / 3600);
-    const minutes = Math.floor((seconds % 3600) / 60);
-    
-    let uptime = '';
-    if (days > 0) uptime += `${days} hari `;
-    if (hours > 0) uptime += `${hours} jam `;
-    if (minutes > 0) uptime += `${minutes} menit`;
-    
-    return uptime.trim() || 'Baru saja';
-}
-
-// Tambahkan fungsi helper untuk mengambil nilai parameter
-function getParameterValue(device, paths) {
-    for (let path of paths) {
-        const keys = path.split('.');
-        let value = device;
-        
-        for (let key of keys) {
-            value = value?.[key];
-            if (!value) break;
-        }
-        
-        if (value?._value !== undefined) {
-            return value._value;
-        }
-    }
-    
-    return null;
-}
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
