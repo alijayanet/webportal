@@ -122,24 +122,31 @@
                         <h5 class="mb-0"><i class="fas fa-wifi me-2"></i>WiFi Settings</h5>
                     </div>
                     <div class="card-body">
+                        <!-- SSID Form -->
                         <form id="updateSsidForm" class="mb-4">
                             <div class="form-group mb-3">
                                 <label class="form-label">SSID</label>
                                 <div class="input-group">
-                                    <input type="text" class="form-control" name="ssid" value="<%= deviceData.ssid %>">
-                                    <button type="submit" class="btn btn-primary">Update</button>
+                                    <input type="text" class="form-control" id="ssid" name="ssid" value="<%= deviceData.ssid %>">
+                                    <button type="submit" class="btn btn-primary" id="updateSsidButton">
+                                        <i class="fas fa-save me-1"></i>Update
+                                    </button>
                                 </div>
                             </div>
                         </form>
+
+                        <!-- Password Form -->
                         <form id="passwordForm">
                             <div class="form-group">
                                 <label class="form-label">Password</label>
                                 <div class="input-group">
-                                    <input type="password" class="form-control" name="password" minlength="8">
-                                    <button class="btn btn-outline-secondary" type="button" onclick="togglePassword()">
+                                    <input type="password" class="form-control" id="password" name="password" minlength="8">
+                                    <button class="btn btn-outline-secondary" type="button" id="togglePassword">
                                         <i class="fas fa-eye"></i>
                                     </button>
-                                    <button type="submit" class="btn btn-primary">Update</button>
+                                    <button type="submit" class="btn btn-primary" id="updatePasswordButton">
+                                        <i class="fas fa-save me-1"></i>Update
+                                    </button>
                                 </div>
                             </div>
                         </form>
@@ -151,9 +158,10 @@
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-        function togglePassword() {
+        // Toggle Password Visibility
+        document.getElementById('togglePassword').addEventListener('click', function() {
             const passwordInput = document.getElementById('password');
-            const eyeIcon = document.querySelector('.fa-eye');
+            const eyeIcon = this.querySelector('i');
             
             if (passwordInput.type === 'password') {
                 passwordInput.type = 'text';
@@ -164,36 +172,50 @@
                 eyeIcon.classList.remove('fa-eye-slash');
                 eyeIcon.classList.add('fa-eye');
             }
-        }
+        });
 
         // Update SSID Form Handler
         document.getElementById('updateSsidForm').addEventListener('submit', async function(e) {
             e.preventDefault();
             
-            const ssid = document.getElementById('ssid').value;
-            const ssidSpinner = document.getElementById('ssidSpinner');
-            const updateSsidButton = document.getElementById('updateSsidButton');
+            const ssidInput = document.getElementById('ssid');
+            const updateButton = document.getElementById('updateSsidButton');
+            const originalButtonText = updateButton.innerHTML;
             
             try {
-                // Show spinner and disable button
-                ssidSpinner.style.display = 'inline-block';
-                updateSsidButton.disabled = true;
+                // Disable form elements
+                ssidInput.disabled = true;
+                updateButton.disabled = true;
+                updateButton.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Updating...';
                 
-                const response = await fetch('/update-wifi', {  // Endpoint yang benar
+                const response = await fetch('/update-wifi', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
                     },
                     body: JSON.stringify({
-                        ssid: ssid
+                        ssid: ssidInput.value
                     })
                 });
 
                 const data = await response.json();
                 
                 if (data.success) {
-                    alert('SSID berhasil diupdate');
-                    window.location.reload();
+                    // Show success message
+                    const toast = document.createElement('div');
+                    toast.className = 'alert alert-success position-fixed top-0 end-0 m-3';
+                    toast.style.zIndex = '1050';
+                    toast.innerHTML = `
+                        <i class="fas fa-check-circle me-2"></i>
+                        SSID berhasil diupdate
+                    `;
+                    document.body.appendChild(toast);
+                    
+                    // Remove toast after 3 seconds
+                    setTimeout(() => {
+                        toast.remove();
+                        window.location.reload();
+                    }, 3000);
                 } else {
                     throw new Error(data.message || 'Gagal mengupdate SSID');
                 }
@@ -201,9 +223,10 @@
                 console.error('Error:', error);
                 alert('Terjadi kesalahan saat mengupdate SSID: ' + error.message);
             } finally {
-                // Hide spinner and enable button
-                ssidSpinner.style.display = 'none';
-                updateSsidButton.disabled = false;
+                // Re-enable form elements
+                ssidInput.disabled = false;
+                updateButton.disabled = false;
+                updateButton.innerHTML = originalButtonText;
             }
         });
 
@@ -211,43 +234,63 @@
         document.getElementById('passwordForm').addEventListener('submit', async function(e) {
             e.preventDefault();
             
-            const password = document.getElementById('password').value;
-            const button = document.getElementById('updatePasswordButton');
-            const spinner = document.getElementById('passwordSpinner');
+            const passwordInput = document.getElementById('password');
+            const updateButton = document.getElementById('updatePasswordButton');
+            const originalButtonText = updateButton.innerHTML;
             
             try {
-                // Show spinner and disable button
-                button.disabled = true;
-                spinner.style.display = 'inline-block';
+                // Validate password
+                if (passwordInput.value.length < 8) {
+                    throw new Error('Password harus minimal 8 karakter');
+                }
+
+                // Disable form elements
+                passwordInput.disabled = true;
+                updateButton.disabled = true;
+                updateButton.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Updating...';
                 
-                const response = await fetch('/update-wifi', {  // Menggunakan endpoint yang sama
+                const response = await fetch('/update-wifi', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
                     },
                     body: JSON.stringify({
-                        password: password
+                        password: passwordInput.value
                     })
                 });
 
-                const result = await response.json();
+                const data = await response.json();
                 
-                if (result.success) {
-                    document.getElementById('passwordSuccess').style.display = 'block';
+                if (data.success) {
+                    // Show success message
+                    const toast = document.createElement('div');
+                    toast.className = 'alert alert-success position-fixed top-0 end-0 m-3';
+                    toast.style.zIndex = '1050';
+                    toast.innerHTML = `
+                        <i class="fas fa-check-circle me-2"></i>
+                        Password berhasil diupdate
+                    `;
+                    document.body.appendChild(toast);
+                    
+                    // Clear password input
+                    passwordInput.value = '';
+                    
+                    // Remove toast after 3 seconds
                     setTimeout(() => {
-                        document.getElementById('passwordSuccess').style.display = 'none';
+                        toast.remove();
                         window.location.reload();
-                    }, 2000);
+                    }, 3000);
                 } else {
-                    throw new Error(result.message || 'Gagal mengupdate Password');
+                    throw new Error(data.message || 'Gagal mengupdate password');
                 }
             } catch (error) {
                 console.error('Error:', error);
-                alert('Error: ' + error.message);
+                alert('Terjadi kesalahan saat mengupdate password: ' + error.message);
             } finally {
-                // Hide spinner and enable button
-                button.disabled = false;
-                spinner.style.display = 'none';
+                // Re-enable form elements
+                passwordInput.disabled = false;
+                updateButton.disabled = false;
+                updateButton.innerHTML = originalButtonText;
             }
         });
 
