@@ -6,11 +6,16 @@ require('dotenv').config();
 const InternetPackage = require('./models/InternetPackage');
 const PaymentStatus = require('./models/PaymentStatus');
 const mongoose = require('mongoose');
+const whatsappRoutes = require('./routes/whatsapp');
 
 const app = express();
 
 // Middleware
-app.use(express.json());
+app.use(express.json({
+    verify: (req, res, buf) => {
+        req.rawBody = buf.toString();
+    }
+}));
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static('public'));
 app.use(session({
@@ -18,6 +23,23 @@ app.use(session({
     resave: false,
     saveUninitialized: true
 }));
+
+// Request logging middleware
+app.use((req, res, next) => {
+    const start = Date.now();
+    res.on('finish', () => {
+        const duration = Date.now() - start;
+        console.log(`${new Date().toISOString()} - ${req.method} ${req.url} - ${res.statusCode} - ${duration}ms`);
+        if (req.method === 'POST') {
+            console.log('POST Body:', req.body);
+            if (req.rawBody) console.log('Raw Body:', req.rawBody);
+        }
+    });
+    next();
+});
+
+// Register WhatsApp routes BEFORE other routes
+app.use('/whatsapp', whatsappRoutes);
 
 // Set view engine
 app.set('view engine', 'ejs');
@@ -62,14 +84,11 @@ app.post('/login', async (req, res) => {
 
         console.log('Total devices:', response.data.length);
 
-        // Find device with matching tag
+        // Find device with matching username tag
         const device = response.data.find(d => {
-            console.log('Checking device:', {
-                id: d._id,
-                tags: d._tags,
-                rawDevice: JSON.stringify(d)
-            });
-            return d._tags && d._tags.includes(username);
+            // Cek username tag (tanpa prefix)
+            const usernameTag = d._tags?.find(tag => !tag.startsWith('wa:'));
+            return usernameTag === username;
         });
 
         if (device) {
@@ -82,24 +101,10 @@ app.post('/login', async (req, res) => {
             req.session.deviceId = device._id;
             res.redirect('/dashboard');
         } else {
-            // Debug: Log all devices and their tags
-            console.log('No device found with tag:', username);
-            console.log('Available devices:', response.data.map(d => ({
-                id: d._id,
-                tags: d._tags || [],
-                rawDevice: JSON.stringify(d)
-            })));
-
             res.render('login', { error: 'Nomor pelanggan tidak ditemukan' });
         }
     } catch (error) {
         console.error('Login error:', error);
-        console.error('Full error details:', {
-            message: error.message,
-            status: error.response?.status,
-            data: error.response?.data,
-            url: error.config?.url
-        });
         res.render('login', { error: 'Terjadi kesalahan saat menghubungi server' });
     }
 });
@@ -973,7 +978,44 @@ function isAdmin(req, res, next) {
     }
 }
 
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
+// Error handling middleware (tambahkan sebelum app.listen)
+app.use((err, req, res, next) => {
+    console.error('Error:', err);
+    res.status(500).json({ 
+        success: false, 
+        message: 'Internal server error',
+        error: err.message 
+    });
+});
+
+// 404 handler (tambahkan sebelum error handling)
+app.use((req, res) => {
+    console.log('404 - Not Found:', req.url);
+    res.status(404).json({ 
+        success: false, 
+        message: 'Route not found' 
+    });
+});
+
+const PORT = process.env.PORT || 3100;
+const server = app.listen(PORT, () => {
     console.log(`Server berjalan di port ${PORT}`);
+}).on('error', (err) => {
+    if (err.code === 'EADDRINUSE') {
+        console.error(`Port ${PORT} sudah digunakan. Pastikan tidak ada proses lain yang menggunakan port ini.`);
+        console.log('Coba gunakan perintah: sudo lsof -i :' + PORT);
+        process.exit(1);
+    } else {
+        console.error('Server error:', err);
+    }
+});
+
+// Graceful shutdown
+process.on('SIGTERM', () => {
+    console.info('SIGTERM signal received.');
+    console.log('Closing HTTP server...');
+    server.close(() => {
+        console.log('HTTP server closed.');
+        process.exit(0);
+    });
 });

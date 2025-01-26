@@ -1,10 +1,14 @@
 {
   "name": "genieacs-client-portal",
   "version": "1.0.0",
-  "description": "GenieACS Client Portal",
+  "description": "GenieACS Client Portal with WhatsApp Integration",
   "main": "app.js",
   "scripts": {
-    "start": "node app.js"
+    "install-portal": "node install.js",
+    "start": "pm2 start app.js --name webportal",
+    "dev": "node app.js",
+    "stop": "pm2 stop webportal",
+    "restart": "pm2 restart webportal"
   },
   "dependencies": {
     "express": "^4.18.2",
