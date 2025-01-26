@@ -3,6 +3,9 @@ const session = require('express-session');
 const path = require('path');
 const axios = require('axios');
 require('dotenv').config();
+const InternetPackage = require('./models/InternetPackage');
+const PaymentStatus = require('./models/PaymentStatus');
+const mongoose = require('mongoose');
 
 const app = express();
 
@@ -19,6 +22,21 @@ app.use(session({
 // Set view engine
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
+
+// Set strictQuery option to suppress warning
+mongoose.set('strictQuery', false);
+
+// MongoDB Connection
+const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/ont_manager';
+
+mongoose.connect(MONGODB_URI, {
+    useNewUrlParser: true,
+    useUnifiedTopology: true
+}).then(() => {
+    console.log('Terhubung ke MongoDB');
+}).catch((err) => {
+    console.error('Gagal terhubung ke MongoDB:', err.message);
+});
 
 // Routes
 app.get('/', (req, res) => {
@@ -201,6 +219,7 @@ app.get('/dashboard', async (req, res) => {
 
         // Get device data
         const deviceData = {
+            id: req.session.deviceId,
             username: req.session.username,
             model: model,
             serialNumber: serialNumber,
@@ -225,6 +244,30 @@ app.get('/dashboard', async (req, res) => {
 
         console.log('Processed device data:', deviceData);
 
+        // Tambahkan data paket dan pembayaran
+        const paymentStatus = await PaymentStatus.findOne({ deviceId: deviceData.id })
+            .populate('packageId');
+        
+        console.log('Payment status:', paymentStatus);
+
+        if (paymentStatus && paymentStatus.packageId) {
+            deviceData.internetPackage = {
+                name: paymentStatus.packageId.name,
+                speed: paymentStatus.packageId.speed,
+                price: paymentStatus.packageId.price
+            };
+            deviceData.paymentStatus = {
+                isPaid: paymentStatus.isPaid,
+                lastPaymentDate: paymentStatus.lastPaymentDate
+            };
+        } else {
+            deviceData.internetPackage = null;
+            deviceData.paymentStatus = {
+                isPaid: false,
+                lastPaymentDate: null
+            };
+        }
+
         res.render('dashboard', { deviceData, error: null });
 
     } catch (error) {
@@ -232,24 +275,11 @@ app.get('/dashboard', async (req, res) => {
         res.render('dashboard', { 
             deviceData: {
                 username: req.session.username,
-                model: 'N/A',
-                serialNumber: 'N/A',
-                manufacturer: 'N/A',
-                pppUsername: 'N/A',
-                pppMac: 'N/A',
-                pppoeIP: 'N/A',
-                tr069IP: 'N/A',
-                ssid: 'N/A',
-                userConnected: '0',
-                rxPower: 'N/A',
-                uptime: 'N/A',
-                registeredTime: 'N/A',
                 status: 'unknown',
                 statusLabel: 'Unknown',
-                statusColor: '#99ccff',
-                lastInform: 'N/A'
+                statusColor: '#999999'
             },
-            error: `Gagal mengambil data perangkat: ${error.message}`
+            error: error.message 
         });
     }
 });
@@ -528,13 +558,9 @@ const getRxPowerClass = (rxPower) => {
     return 'rx-power-critical';
 };
 
-// Update admin route
-app.get('/admin', async (req, res) => {
+// Tambahkan fungsi getDevices sebelum route admin
+async function getDevices() {
     try {
-        if (!req.session.isAdmin) {
-            return res.redirect('/admin/login');
-        }
-
         const response = await axios.get(`${process.env.GENIEACS_URL}/devices`, {
             auth: {
                 username: process.env.GENIEACS_USERNAME,
@@ -542,7 +568,7 @@ app.get('/admin', async (req, res) => {
             }
         });
 
-        const devices = response.data.map(device => {
+        return response.data.map(device => {
             // Cek status berdasarkan last inform time
             const isOnline = getDeviceStatus(device._lastInform);
             
@@ -564,50 +590,70 @@ app.get('/admin', async (req, res) => {
                 connectedDevices: connectedDevices
             };
         });
+    } catch (error) {
+        console.error('Error getting devices:', error);
+        throw new Error('Gagal mengambil data perangkat');
+    }
+}
 
-        res.render('admin', { 
-            devices,
-            getRxPowerClass,
-            error: null
+// Update admin route
+app.get('/admin', isAdmin, async (req, res) => {
+    try {
+        const devices = await getDevices();
+        const packages = await InternetPackage.find();
+        const paymentStatuses = await PaymentStatus.find().populate('packageId');
+        
+        const devicesWithPackages = devices.map(device => {
+            const paymentStatus = paymentStatuses.find(ps => ps.deviceId === device._id);
+            if (paymentStatus) {
+                device.internetPackage = paymentStatus.packageId;
+                device.paymentStatus = {
+                    isPaid: paymentStatus.isPaid,
+                    lastPaymentDate: paymentStatus.lastPaymentDate
+                };
+            }
+            return device;
         });
 
+        res.render('admin', { 
+            devices: devicesWithPackages,
+            packages,
+            getRxPowerClass, // Tambahkan ini kembali karena digunakan di template
+            error: null 
+        });
     } catch (error) {
         console.error('Admin page error:', error);
         res.render('admin', { 
             devices: [],
-            getRxPowerClass,
-            error: 'Gagal memuat data perangkat: ' + error.message
+            packages: [],
+            getRxPowerClass, // Tambahkan ini kembali
+            error: error.message 
         });
     }
 });
 
 // Admin login route
-app.post('/admin/login', async (req, res) => {
-    const { username, password } = req.body;
-
-    try {
-        // Cek kredensial admin
-        if (username === process.env.ADMIN_USERNAME && 
-            password === process.env.ADMIN_PASSWORD) {
-            
-            req.session.isAdmin = true;
-            return res.redirect('/admin');
-        }
-
-        res.render('admin-login', { error: 'Username atau password admin salah' });
-
-    } catch (error) {
-        console.error('Admin login error:', error);
-        res.render('admin-login', { error: 'Terjadi kesalahan saat login' });
-    }
-});
-
-// Admin login page
 app.get('/admin/login', (req, res) => {
     if (req.session.isAdmin) {
         return res.redirect('/admin');
     }
     res.render('admin-login', { error: null });
+});
+
+app.post('/admin/login', async (req, res) => {
+    const { username, password } = req.body;
+
+    try {
+        if (username === process.env.ADMIN_USERNAME && 
+            password === process.env.ADMIN_PASSWORD) {
+            req.session.isAdmin = true;
+            return res.redirect('/admin');
+        }
+        res.render('admin-login', { error: 'Username atau password salah' });
+    } catch (error) {
+        console.error('Admin login error:', error);
+        res.render('admin-login', { error: 'Terjadi kesalahan saat login' });
+    }
 });
 
 // Update logout to handle admin session
@@ -858,6 +904,74 @@ app.post('/admin/refresh-all', async (req, res) => {
         });
     }
 });
+
+// Endpoint untuk manajemen paket internet
+app.post('/admin/packages', isAdmin, async (req, res) => {
+    try {
+        const { name, speed, price } = req.body;
+        const newPackage = new InternetPackage({ name, speed, price });
+        await newPackage.save();
+        res.json({ success: true, message: 'Paket berhasil ditambahkan' });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
+
+app.delete('/admin/packages/:id', isAdmin, async (req, res) => {
+    try {
+        await InternetPackage.findByIdAndDelete(req.params.id);
+        res.json({ success: true, message: 'Paket berhasil dihapus' });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
+
+app.post('/admin/assign-package', isAdmin, async (req, res) => {
+    try {
+        const { deviceId, packageId } = req.body;
+        
+        // Update atau buat status pembayaran baru
+        await PaymentStatus.findOneAndUpdate(
+            { deviceId },
+            { 
+                deviceId,
+                packageId,
+                isPaid: false // Reset status pembayaran saat assign paket baru
+            },
+            { upsert: true }
+        );
+        
+        res.json({ success: true, message: 'Paket berhasil di-assign' });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
+
+app.post('/admin/update-payment', isAdmin, async (req, res) => {
+    try {
+        const { deviceId } = req.body;
+        
+        await PaymentStatus.findOneAndUpdate(
+            { deviceId },
+            { 
+                isPaid: true,
+                lastPaymentDate: new Date()
+            }
+        );
+        
+        res.json({ success: true, message: 'Status pembayaran berhasil diupdate' });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
+
+function isAdmin(req, res, next) {
+    if (req.session.isAdmin) {
+        next();
+    } else {
+        res.redirect('/admin/login');
+    }
+}
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {

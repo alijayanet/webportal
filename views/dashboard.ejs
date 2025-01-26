@@ -77,6 +77,67 @@
                 </div>
             </div>
 
+            <!-- Setelah Device Info Card dan sebelum Network Stats -->
+            <div class="col-md-12 mb-4">
+                <div class="card border-0 shadow-sm">
+                    <div class="card-header bg-transparent border-0">
+                        <h5 class="mb-0"><i class="fas fa-cube me-2"></i>Informasi Paket & Pembayaran</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <div class="info-group">
+                                    <label>Nama Paket</label>
+                                    <div class="value">
+                                        <% if(deviceData.internetPackage) { %>
+                                            <%= deviceData.internetPackage.name %>
+                                        <% } else { %>
+                                            Belum ada paket
+                                        <% } %>
+                                    </div>
+                                </div>
+                                <div class="info-group mt-2">
+                                    <label>Kecepatan</label>
+                                    <div class="value">
+                                        <% if(deviceData.internetPackage) { %>
+                                            <%= deviceData.internetPackage.speed %> Mbps
+                                        <% } else { %>
+                                            -
+                                        <% } %>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="info-group">
+                                    <label>Biaya Bulanan</label>
+                                    <div class="value">
+                                        <% if(deviceData.internetPackage) { %>
+                                            Rp <%= deviceData.internetPackage.price.toLocaleString('id-ID') %>
+                                        <% } else { %>
+                                            Rp 0
+                                        <% } %>
+                                    </div>
+                                </div>
+                                <div class="info-group mt-2">
+                                    <label>Status Pembayaran</label>
+                                    <div class="value">
+                                        <% if(deviceData.paymentStatus.isPaid) { %>
+                                            <span class="badge bg-success">
+                                                <i class="fas fa-check-circle me-1"></i>Lunas
+                                            </span>
+                                        <% } else { %>
+                                            <span class="badge bg-danger">
+                                                <i class="fas fa-exclamation-circle me-1"></i>Belum Lunas
+                                            </span>
+                                        <% } %>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <!-- Network Stats -->
             <div class="col-md-6 mb-4">
                 <div class="card border-0 shadow-sm">

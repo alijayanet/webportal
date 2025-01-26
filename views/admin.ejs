@@ -6,6 +6,7 @@
     <title>Admin Dashboard</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <style>
         :root {
             --primary-gradient: linear-gradient(135deg, #4a90e2 0%, #2c3e50 100%);
@@ -103,6 +104,9 @@
                 <i class="fas fa-network-wired me-2"></i>ONT Monitoring
             </span>
             <div>
+                <button class="btn btn-light btn-sm me-2" data-bs-toggle="modal" data-bs-target="#packageModal">
+                    <i class="fas fa-cube me-1"></i> Manajemen Paket
+                </button>
                 <a href="/logout" class="btn btn-light btn-sm">
                     <i class="fas fa-sign-out-alt"></i> Logout
                 </a>
@@ -233,6 +237,22 @@
                                         <small class="text-muted d-block">Last Inform</small>
                                         <span><%= new Date(device.lastInform).toLocaleString() %></span>
                                     </div>
+                                    <div class="col-12 mt-3">
+                                        <small class="text-muted d-block">Paket Internet</small>
+                                        <span><%= device.internetPackage?.name || 'Belum ada paket' %></span>
+                                        <div class="mt-2">
+                                            <button class="btn btn-sm btn-outline-primary me-2" 
+                                                    onclick="assignPackage('<%= device._id %>')">
+                                                <i class="fas fa-cube me-1"></i>Assign Paket
+                                            </button>
+                                            <button class="btn btn-sm <%= device.paymentStatus?.isPaid ? 'btn-success disabled' : 'btn-warning' %>"
+                                                    onclick="updatePayment('<%= device._id %>')"
+                                                    <%= device.paymentStatus?.isPaid ? 'disabled' : '' %>>
+                                                <i class="fas fa-money-bill me-1"></i>
+                                                <%= device.paymentStatus?.isPaid ? 'Lunas' : 'Bayar' %>
+                                            </button>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -244,6 +264,83 @@
                 Tidak ada perangkat yang ditemukan
             </div>
         <% } %>
+    </div>
+
+    <!-- Modal Manajemen Paket -->
+    <div class="modal fade" id="packageModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Manajemen Paket Internet</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <!-- Form Tambah Paket -->
+                    <form id="packageForm" class="mb-4">
+                        <div class="mb-3">
+                            <label class="form-label">Nama Paket</label>
+                            <input type="text" class="form-control" name="name" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Kecepatan (Mbps)</label>
+                            <input type="number" class="form-control" name="speed" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Harga</label>
+                            <input type="number" class="form-control" name="price" required>
+                        </div>
+                        <button type="submit" class="btn btn-primary">Tambah Paket</button>
+                    </form>
+
+                    <!-- Daftar Paket -->
+                    <h6>Daftar Paket</h6>
+                    <div id="packageList" class="list-group">
+                        <% packages.forEach(function(pkg) { %>
+                            <div class="list-group-item d-flex justify-content-between align-items-center">
+                                <div>
+                                    <h6 class="mb-1"><%= pkg.name %></h6>
+                                    <small class="text-muted">
+                                        <%= pkg.speed %> Mbps - Rp <%= pkg.price.toLocaleString('id-ID') %>
+                                    </small>
+                                </div>
+                                <button class="btn btn-sm btn-danger" onclick="deletePackage('<%= pkg._id %>')">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </div>
+                        <% }); %>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Assign Paket -->
+    <div class="modal fade" id="assignPackageModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Assign Paket Internet</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="assignPackageForm">
+                        <input type="hidden" name="deviceId" id="assignDeviceId">
+                        <div class="mb-3">
+                            <label class="form-label">Pilih Paket</label>
+                            <select class="form-select" name="packageId" required>
+                                <option value="">Pilih Paket...</option>
+                                <% packages.forEach(function(pkg) { %>
+                                    <option value="<%= pkg._id %>">
+                                        <%= pkg.name %> - <%= pkg.speed %>Mbps - Rp <%= pkg.price.toLocaleString('id-ID') %>
+                                    </option>
+                                <% }); %>
+                            </select>
+                        </div>
+                        <button type="submit" class="btn btn-primary">Assign Paket</button>
+                    </form>
+                </div>
+            </div>
+        </div>
     </div>
 
     <script>
@@ -391,6 +488,113 @@
                 }
             });
         });
+
+        function assignPackage(deviceId) {
+            document.getElementById('assignDeviceId').value = deviceId;
+            new bootstrap.Modal(document.getElementById('assignPackageModal')).show();
+        }
+
+        async function updatePayment(deviceId) {
+            try {
+                if (!confirm('Konfirmasi pembayaran untuk device ini?')) {
+                    return;
+                }
+
+                const response = await fetch('/admin/update-payment', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ deviceId })
+                });
+
+                const data = await response.json();
+                
+                if (data.success) {
+                    alert('Status pembayaran berhasil diupdate');
+                    location.reload();
+                } else {
+                    throw new Error(data.message);
+                }
+            } catch (error) {
+                alert('Gagal mengupdate pembayaran: ' + error.message);
+            }
+        }
+
+        document.getElementById('packageForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            try {
+                const formData = new FormData(this);
+                const response = await fetch('/admin/packages', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(Object.fromEntries(formData))
+                });
+
+                const data = await response.json();
+                
+                if (data.success) {
+                    alert('Paket berhasil ditambahkan');
+                    location.reload();
+                } else {
+                    throw new Error(data.message);
+                }
+            } catch (error) {
+                alert('Gagal menambahkan paket: ' + error.message);
+            }
+        });
+
+        document.getElementById('assignPackageForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            try {
+                const formData = new FormData(this);
+                const response = await fetch('/admin/assign-package', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(Object.fromEntries(formData))
+                });
+
+                const data = await response.json();
+                
+                if (data.success) {
+                    alert('Paket berhasil di-assign');
+                    location.reload();
+                } else {
+                    throw new Error(data.message);
+                }
+            } catch (error) {
+                alert('Gagal meng-assign paket: ' + error.message);
+            }
+        });
+
+        async function deletePackage(packageId) {
+            try {
+                if (!confirm('Yakin ingin menghapus paket ini?')) {
+                    return;
+                }
+
+                const response = await fetch(`/admin/packages/${packageId}`, {
+                    method: 'DELETE'
+                });
+
+                const data = await response.json();
+                
+                if (data.success) {
+                    alert('Paket berhasil dihapus');
+                    location.reload();
+                } else {
+                    throw new Error(data.message);
+                }
+            } catch (error) {
+                alert('Gagal menghapus paket: ' + error.message);
+            }
+        }
     </script>
 </body>
 </html> 
