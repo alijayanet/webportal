@@ -1,6 +1,8 @@
 const fs = require('fs');
 const readline = require('readline');
 const settings = require('./config/settings');
+const { messages } = require('./config/languages');
+const path = require('path');
 
 const rl = readline.createInterface({
     input: process.stdin,
@@ -22,15 +24,24 @@ async function setupConfig() {
 
     // WhatsApp
     console.log('\n=== WHATSAPP GATEWAY ===');
-    settings.whatsapp.apiKey = await question('API Key: ');
-    settings.whatsapp.sender = await question('Nomor Pengirim: ');
+    console.log('Setup WhatsApp Baileys...');
+    settings.whatsapp.authFolder = await question('Auth Folder (.whatsapp-auth): ') || '.whatsapp-auth';
     const admins = await question('Nomor Admin (pisahkan dengan koma): ');
     settings.whatsapp.admins = admins.split(',').map(a => a.trim());
+    settings.whatsapp.defaultLang = await question('Default Language (id/en): ') || 'id';
+    settings.whatsapp.reconnectInterval = parseInt(await question('Reconnect Interval (ms): ') || '5000');
+    settings.whatsapp.qrTimeout = parseInt(await question('QR Timeout (ms): ') || '60000');
 
     // Save config
     fs.writeFileSync(
         './config/settings.js', 
         `module.exports = ${JSON.stringify(settings, null, 4)};`
+    );
+
+    // Copy language file
+    fs.copyFileSync(
+        path.join(__dirname, 'config/languages.js'),
+        path.join(__dirname, 'dist/config/languages.js')
     );
 
     console.log('\nKonfigurasi berhasil disimpan!');

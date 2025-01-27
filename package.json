@@ -5,6 +5,7 @@
   "main": "app.js",
   "scripts": {
     "install-portal": "node install.js",
+    "setup-wa": "node setup-wa.js",
     "start": "pm2 start app.js --name webportal",
     "dev": "node app.js",
     "stop": "pm2 stop webportal",
@@ -16,6 +17,9 @@
     "ejs": "^3.1.9",
     "axios": "^1.6.2",
     "dotenv": "^16.3.1",
-    "mongoose": "^6.0.0"
+    "mongoose": "^6.0.0",
+    "@adiwajshing/baileys": "^5.0.0",
+    "qrcode": "^1.5.0",
+    "qrcode-terminal": "^0.12.0"
   }
 } 

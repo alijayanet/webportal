@@ -1,8 +1,10 @@
 const express = require('express');
 const router = express.Router();
-const whatsappService = require('../config/whatsapp');
+const whatsappService = require('../config/whatsapp-baileys');
 const { getActiveServer, switchServer } = require('../config/servers');
 const axios = require('axios');
+const QRCode = require('qrcode');
+const { getMessage } = require('../config/languages');
 
 // Helper function untuk mengambil data device dari GenieACS
 async function getDeviceByPPPoE(pppoeUsername) {
@@ -730,6 +732,42 @@ router.post('/webhook', async (req, res) => {
                     return res.json({ success: true });
                 }
             }
+
+            // Handle command bahasa
+            if (command === 'lang' || command === 'bahasa') {
+                const lang = params[0]?.toLowerCase();
+                
+                if (!lang || !['id', 'en'].includes(lang)) {
+                    await whatsappService.sendMessage(formattedPhone, 'commands.langInvalid');
+                    return res.json({ success: false });
+                }
+
+                // Set bahasa user
+                whatsappService.setUserLanguage(formattedPhone, lang);
+                
+                // Kirim konfirmasi
+                await whatsappService.sendMessage(formattedPhone, 'commands.langChanged', {
+                    lang: lang === 'id' ? 'Indonesia' : 'English'
+                });
+                
+                return res.json({ success: true });
+            }
+
+            // Update menu command untuk tampilkan opsi bahasa
+            if (command === 'menu') {
+                const lang = whatsappService.getUserLanguage(formattedPhone);
+                const menuMessage = `${getMessage(lang, 'menu.title')}\n\n` +
+                    `${getMessage(lang, 'menu.checkStatus')}\n` +
+                    `${getMessage(lang, 'menu.changeWifi')}\n` +
+                    `${getMessage(lang, 'menu.changePass')}\n` +
+                    `${getMessage(lang, 'menu.help')}\n\n` +
+                    `*Language/Bahasa*:\n` +
+                    `lang id - Bahasa Indonesia\n` +
+                    `lang en - English`;
+                    
+                await whatsappService.sendMessage(formattedPhone, menuMessage);
+                return res.json({ success: true });
+            }
         }
 
         // Proses perintah normal untuk user biasa
@@ -852,4 +890,43 @@ router.post('/ping', (req, res) => {
     res.json({ status: 'ok', message: 'POST webhook is working' });
 });
 
-module.exports = router; 
+// Endpoint untuk menampilkan QR
+router.get('/qr', (req, res) => {
+    res.render('whatsapp-qr');
+});
+
+// Endpoint untuk get QR data via WebSocket
+const WebSocket = require('ws');
+const wss = new WebSocket.Server({ noServer: true });
+
+wss.on('connection', (ws) => {
+    // Set callback untuk QR
+    whatsappService.onQR(async (qr) => {
+        try {
+            const qrImage = await QRCode.toDataURL(qr);
+            ws.send(JSON.stringify({
+                type: 'qr',
+                data: qrImage
+            }));
+        } catch (error) {
+            console.error('QR generation error:', error);
+        }
+    });
+
+    // Set callback untuk status koneksi
+    whatsappService.onConnection((connected) => {
+        ws.send(JSON.stringify({
+            type: 'connection',
+            connected: connected
+        }));
+    });
+});
+
+// Template untuk QR page
+router.get('/qr', (req, res) => {
+    res.render('whatsapp-qr', {
+        title: 'WhatsApp QR Code'
+    });
+});
+
+module.exports = { router, wss }; 

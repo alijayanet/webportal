@@ -104,6 +104,9 @@
                 <i class="fas fa-network-wired me-2"></i>ONT Monitoring
             </span>
             <div>
+                <button class="btn btn-light btn-sm me-2" data-bs-toggle="modal" data-bs-target="#whatsappModal">
+                    <i class="fab fa-whatsapp me-1"></i> WhatsApp Gateway
+                </button>
                 <button class="btn btn-light btn-sm me-2" data-bs-toggle="modal" data-bs-target="#packageModal">
                     <i class="fas fa-cube me-1"></i> Manajemen Paket
                 </button>
@@ -338,6 +341,30 @@
                         </div>
                         <button type="submit" class="btn btn-primary">Assign Paket</button>
                     </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal WhatsApp QR -->
+    <div class="modal fade" id="whatsappModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">
+                        <i class="fab fa-whatsapp me-2"></i>WhatsApp Gateway
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body text-center">
+                    <div id="qrcode"></div>
+                    <div class="status mt-3" id="waStatus">Menunggu QR Code...</div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Tutup</button>
+                    <button type="button" class="btn btn-primary" id="refreshQR">
+                        <i class="fas fa-sync-alt me-1"></i>Refresh QR
+                    </button>
                 </div>
             </div>
         </div>
@@ -595,6 +622,63 @@
                 alert('Gagal menghapus paket: ' + error.message);
             }
         }
+
+        // WhatsApp QR Code WebSocket
+        let ws;
+        
+        function connectWebSocket() {
+            ws = new WebSocket('ws://' + window.location.host + '/whatsapp/ws');
+            
+            ws.onmessage = (event) => {
+                const data = JSON.parse(event.data);
+                if (data.type === 'qr') {
+                    document.getElementById('qrcode').innerHTML = 
+                        `<img src="${data.data}" alt="QR Code" class="img-fluid">`;
+                    document.getElementById('waStatus').innerHTML = 
+                        '<span class="text-primary">Silakan scan QR Code dengan WhatsApp</span>';
+                } else if (data.type === 'connection') {
+                    if (data.connected) {
+                        document.getElementById('waStatus').innerHTML = 
+                            '<span class="text-success"><i class="fas fa-check-circle me-1"></i>WhatsApp Connected</span>';
+                        document.getElementById('qrcode').innerHTML = 
+                            '<i class="fas fa-check-circle text-success" style="font-size: 48px;"></i>';
+                    }
+                }
+            };
+
+            ws.onerror = (error) => {
+                document.getElementById('waStatus').innerHTML = 
+                    `<span class="text-danger">Error: ${error.message}</span>`;
+            };
+
+            ws.onclose = () => {
+                document.getElementById('waStatus').innerHTML = 
+                    '<span class="text-warning">Koneksi terputus, mencoba menghubungkan ulang...</span>';
+                setTimeout(connectWebSocket, 5000);
+            };
+        }
+
+        // Connect WebSocket saat modal dibuka
+        document.getElementById('whatsappModal').addEventListener('show.bs.modal', () => {
+            connectWebSocket();
+        });
+
+        // Disconnect WebSocket saat modal ditutup
+        document.getElementById('whatsappModal').addEventListener('hide.bs.modal', () => {
+            if (ws) {
+                ws.close();
+            }
+        });
+
+        // Refresh QR button
+        document.getElementById('refreshQR').addEventListener('click', () => {
+            if (ws) {
+                ws.close();
+            }
+            document.getElementById('qrcode').innerHTML = '';
+            document.getElementById('waStatus').textContent = 'Menunggu QR Code...';
+            connectWebSocket();
+        });
     </script>
 </body>
 </html> 

@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>WhatsApp QR Code</title>
+    <style>
+        .qr-container {
+            text-align: center;
+            padding: 20px;
+        }
+        #qrcode {
+            margin: 20px auto;
+            max-width: 300px;
+        }
+        .status {
+            margin-top: 10px;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="qr-container">
+        <h2>Scan QR Code untuk WhatsApp Gateway</h2>
+        <div id="qrcode"></div>
+        <div class="status" id="status">Menunggu QR Code...</div>
+    </div>
+
+    <script>
+        const ws = new WebSocket('ws://' + window.location.host + '/whatsapp/ws');
+        
+        ws.onmessage = (event) => {
+            const data = JSON.parse(event.data);
+            if (data.type === 'qr') {
+                document.getElementById('qrcode').innerHTML = 
+                    `<img src="${data.data}" alt="QR Code">`;
+                document.getElementById('status').textContent = 
+                    'Silakan scan QR Code dengan WhatsApp';
+            }
+        };
+
+        ws.onerror = (error) => {
+            document.getElementById('status').textContent = 
+                'Error: ' + error.message;
+        };
+    </script>
+</body>
+</html> 

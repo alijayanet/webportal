@@ -1,0 +1,10 @@
+{
+  "_id": "demo",
+  "password": "admin",
+  "roles": ["demo"]
+}
+{
+  "_id": "alijaya",
+  "password": "087828060111",
+  "roles": ["admin"]
+} 

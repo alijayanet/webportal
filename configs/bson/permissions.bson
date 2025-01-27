@@ -1,0 +1,59 @@
+{
+  "_id": "demo_devices",
+  "role": "demo",
+  "resource": "devices",
+  "access": 2,
+  "filter": {},
+  "validate": "!['VirtualParameters.redaman', 'VirtualParameters.Status', 'VirtualParameters.PonMode', 'VirtualParameters.temp', 'VirtualParameters.uptimeDevice'].includes(declare[0].name)"
+}
+{
+  "_id": "demo_presets",
+  "role": "demo",
+  "resource": "presets",
+  "access": 1,
+  "filter": {
+    "name": {
+      "$in": ["setWiFi", "addWAN"]
+    }
+  }
+}
+{
+  "_id": "demo_provisions",
+  "role": "demo",
+  "resource": "provisions",
+  "access": 1,
+  "filter": {
+    "_id": {
+      "$in": ["setWiFi", "addWAN"]
+    }
+  }
+}
+{
+  "_id": "demo_vparams",
+  "role": "demo",
+  "resource": "virtual_parameters",
+  "access": 1,
+  "filter": {
+    "_id": {
+      "$in": [
+        "VirtualParameters.WlanPassword",
+        "VirtualParameters.userconnected",
+        "VirtualParameters.SSID"
+      ]
+    }
+  }
+}
+{
+  "_id": "demo_files",
+  "role": "demo",
+  "resource": "files",
+  "access": 1,
+  "filter": {}
+}
+{
+  "_id": "superuser",
+  "role": "admin",
+  "resource": "*",
+  "access": 3,
+  "filter": {}
+} 

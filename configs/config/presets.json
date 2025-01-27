@@ -1,0 +1,25 @@
+{
+  "PRESETS": [
+    {
+      "weight": 0,
+      "precondition": true,
+      "configurations": [
+        {
+          "type": "value",
+          "name": "InternetGatewayDevice.ManagementServer.PeriodicInformEnable",
+          "value": true
+        },
+        {
+          "type": "value",
+          "name": "InternetGatewayDevice.ManagementServer.PeriodicInformInterval",
+          "value": 300
+        },
+        {
+          "type": "value",
+          "name": "InternetGatewayDevice.LANDevice.1.WLANConfiguration.1.Enable",
+          "value": true
+        }
+      ]
+    }
+  ]
+} 

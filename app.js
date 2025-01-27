@@ -7,6 +7,8 @@ const InternetPackage = require('./models/InternetPackage');
 const PaymentStatus = require('./models/PaymentStatus');
 const mongoose = require('mongoose');
 const whatsappRoutes = require('./routes/whatsapp');
+const { router: whatsappRouter, wss } = require('./routes/whatsapp');
+const server = require('http').createServer(app);
 
 const app = express();
 
@@ -997,8 +999,21 @@ app.use((req, res) => {
     });
 });
 
+// Setup WebSocket
+server.on('upgrade', (request, socket, head) => {
+    if (request.url === '/whatsapp/ws') {
+        wss.handleUpgrade(request, socket, head, (ws) => {
+            wss.emit('connection', ws, request);
+        });
+    }
+});
+
+// Initialize WhatsApp
+const whatsappService = require('./config/whatsapp-baileys');
+whatsappService.initialize().catch(console.error);
+
 const PORT = process.env.PORT || 3100;
-const server = app.listen(PORT, () => {
+server.listen(PORT, () => {
     console.log(`Server berjalan di port ${PORT}`);
 }).on('error', (err) => {
     if (err.code === 'EADDRINUSE') {
