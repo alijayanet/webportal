@@ -34,7 +34,7 @@ http://192.168.8.xx:4000 <br>
 
 demo
 
-https://portal.gantiwifi.online  // nopel 081321960111
+https://demo.gantiwifi.online  // nopel 081947215703
 
 🤝 Kontribusi
 Kontribusi selalu diterima! Silakan buat pull request atau laporkan issue jika menemukan bug.
