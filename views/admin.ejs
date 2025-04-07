@@ -34,60 +34,14 @@
 
         .device-card {
             margin-bottom: 1rem;
-            max-height: 400px;
-            overflow-y: auto;
-        }
-
-        .card-body {
-            padding: 1rem;
-        }
-
-        .device-info {
-            font-size: 0.9rem;
-            margin-bottom: 0.3rem;
-        }
-
-        .device-status {
-            padding: 0.25rem 0.5rem;
-            font-size: 0.8rem;
-        }
-
-        .card-title {
-            font-size: 1.1rem;
-            margin-bottom: 0.5rem;
-        }
-
-        .btn-sm {
-            padding: 0.2rem 0.5rem;
-            font-size: 0.8rem;
-        }
-
-        .devices-container {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-            gap: 1rem;
-            padding: 1rem;
-        }
-
-        .important-info {
-            font-weight: bold;
-            color: #2c3e50;
         }
 
         .status-indicator {
-            width: 10px;
-            height: 10px;
+            width: 12px;
+            height: 12px;
             border-radius: 50%;
             display: inline-block;
-            margin-right: 5px;
-        }
-
-        .online {
-            background-color: #2ecc71;
-        }
-
-        .offline {
-            background-color: #e74c3c;
+            margin-right: 8px;
         }
 
         .status-online {
@@ -140,201 +94,18 @@
             margin-bottom: 1rem;
             color: #4a90e2;
         }
-
-        /* Style untuk tombol reboot */
-        .reboot-device-btn {
-            transition: all 0.3s ease;
-        }
-        .reboot-device-btn:hover {
-            background-color: #dc3545;
-            color: white;
-        }
-        .reboot-device-btn:disabled {
-            opacity: 0.6;
-            cursor: not-allowed;
-        }
-        /* Style untuk alert */
-        .alert {
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            min-width: 300px;
-            z-index: 1000;
-            animation: slideIn 0.5s ease-out;
-        }
-        @keyframes slideIn {
-            from {
-                transform: translateX(100%);
-                opacity: 0;
-            }
-            to {
-                transform: translateX(0);
-                opacity: 1;
-            }
-        }
-
-        /* Style untuk form WiFi settings */
-        .form-group {
-            margin-bottom: 1rem;
-        }
-        .form-label {
-            font-size: 0.875rem;
-            color: #6c757d;
-            margin-bottom: 0.25rem;
-        }
-        .input-group .btn {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 0.375rem 0.75rem;
-        }
-        .input-group .btn i {
-            font-size: 0.875rem;
-        }
-        .btn-outline-secondary:hover {
-            background-color: #e9ecef;
-        }
-
-        .info-group {
-            margin-bottom: 0.5rem;
-        }
-        
-        .info-group label {
-            display: block;
-            font-size: 0.875rem;
-            color: #6c757d;
-            margin-bottom: 0.25rem;
-        }
-        
-        .info-group .value {
-            font-size: 0.9375rem;
-            padding: 0.25rem 0;
-        }
-        
-        /* Adjust spacing for the customer number section */
-        .info-group .btn-sm {
-            margin-top: 0;  /* Align with input */
-        }
-        
-        /* Make sure the Model value aligns with input height */
-        .info-group .value {
-            min-height: calc(1.5em + 0.5rem + 2px);
-            display: flex;
-            align-items: center;
-        }
-        
-        /* Adjust the help text spacing */
-        .text-muted {
-            font-size: 0.75rem;
-            margin-top: -0.25rem;
-        }
-        
-        h6 {
-            color: #495057;
-            font-size: 0.9375rem;
-            font-weight: 600;
-        }
-        
-        .input-group-sm > .form-control {
-            font-size: 0.875rem;
-        }
-        
-        .input-group-sm > .btn {
-            padding: 0.25rem 0.5rem;
-        }
-        
-        .device-card {
-            margin-bottom: 1.5rem;
-        }
-        
-        .device-card .card {
-            border-radius: 0.5rem;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-        }
-        
-        .form-control-sm {
-            height: calc(1.5em + 0.5rem + 2px);
-            padding: 0.25rem 0.5rem;
-            font-size: 0.875rem;
-            border-radius: 0.2rem;
-        }
-        
-        .btn-sm {
-            padding: 0.25rem 0.5rem;
-            font-size: 0.875rem;
-            border-radius: 0.2rem;
-            height: calc(1.5em + 0.5rem + 2px);
-        }
-        
-        .gap-2 {
-            gap: 0.5rem !important;
-        }
-        
-        .info-group small {
-            display: block;
-            margin-top: 0.25rem;
-        }
-        
-        /* Update primary button color to match image */
-        .btn-primary {
-            background-color: #0d6efd;
-            border-color: #0d6efd;
-        }
-        
-        .btn-primary:hover {
-            background-color: #0b5ed7;
-            border-color: #0a58ca;
-        }
-        
-        /* Adjust form layouts */
-        .info-group {
-            margin-bottom: 1rem;
-        }
-        
-        /* Make all inputs same height */
-        .form-control-sm,
-        .input-group-sm > .form-control,
-        .input-group-sm > .btn {
-            height: calc(1.5em + 0.5rem + 2px);
-        }
-        
-        /* Ensure buttons align properly */
-        .col-auto {
-            display: flex;
-            align-items: flex-start;
-        }
-        
-        /* Add some spacing after forms */
-        .update-ssid-form,
-        .update-password-form {
-            margin-bottom: 1rem;
-        }
-        
-        /* Make sure all form rows have consistent spacing */
-        .row {
-            align-items: flex-start;
-        }
     </style>
 </head>
 <body>
-    <nav class="navbar navbar-dark bg-primary">
-        <div class="container d-flex justify-content-between align-items-center">
+    <nav class="navbar navbar-dark mb-4">
+        <div class="container">
             <span class="navbar-brand">
                 <i class="fas fa-network-wired me-2"></i>ONT Monitoring
             </span>
             <div>
-                <ul class="navbar-nav flex-row">
-                    <li class="nav-item me-3">
-                        <a class="nav-link" href="/admin/settings">
-                            <i class="fas fa-cog me-2"></i>Pengaturan
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="/admin/logout">
-                            <i class="fas fa-sign-out-alt me-2"></i>Logout
-                        </a>
-                    </li>
-                </ul>
+                <a href="/logout" class="btn btn-light btn-sm">
+                    <i class="fas fa-sign-out-alt"></i> Logout
+                </a>
             </div>
         </div>
     </nav>
@@ -393,129 +164,76 @@
         </div>
 
         <!-- Search and Filter -->
-        <div class="mb-4">
-            <div class="row g-3">
-                <div class="col-md-4">
-                    <input type="text" 
-                           id="searchInput" 
-                           class="form-control" 
-                           placeholder="Search by PPPoE Username or Customer Number...">
-                </div>
-                <div class="col-md-4">
-                    <select id="statusFilter" class="form-select">
-                        <option value="all">All Status</option>
-                        <option value="online">Online</option>
-                        <option value="offline">Offline</option>
-                    </select>
-                </div>
-                <div class="col-md-4">
-                    <select id="rxPowerFilter" class="form-select">
-                        <option value="all">All RX Power</option>
-                        <option value="good">Good</option>
-                        <option value="warning">Warning</option>
-                        <option value="critical">Critical</option>
-                    </select>
-                </div>
+        <div class="row mb-4">
+            <div class="col-md-6">
+                <input type="text" class="form-control search-box" id="searchInput" 
+                       placeholder="Search by Username or IP...">
+            </div>
+            <div class="col-md-3">
+                <select class="form-select filter-dropdown" id="statusFilter">
+                    <option value="all">All Status</option>
+                    <option value="online">Online</option>
+                    <option value="offline">Offline</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <select class="form-select filter-dropdown" id="rxPowerFilter">
+                    <option value="all">All RX Power</option>
+                    <option value="good">Good (> -25dBm)</option>
+                    <option value="warning">Warning (-25 to -27dBm)</option>
+                    <option value="critical">Critical (< -27dBm)</option>
+                </select>
             </div>
         </div>
 
         <!-- Devices Grid -->
         <% if (devices && devices.length > 0) { %>
-            <div class="devices-container">
-                <% devices.forEach(device => { %>
-                    <div class="card device-card">
-                        <div class="card-body">
-                            <h5 class="card-title d-flex align-items-center">
-                                <span class="status-indicator <%= device.online ? 'online' : 'offline' %>"></span>
-                                <%= device.model %>
-                            </h5>
-                            
-                            <div class="device-info">
-                                <strong>SN:</strong> <%= device.serialNumber %>
-                            </div>
-                            <div class="device-info">
-                                <strong>PPPoE:</strong> <%= device.pppUsername %>
-                            </div>
-                            <div class="device-info">
-                                <strong>IP:</strong> <%= device.pppoeIP %>
-                            </div>
-                            <div class="device-info">
-                                <strong>RX Power:</strong> 
-                                <span class="<%= getRxPowerClass(device.rxPower) %>">
-                                    <%= device.rxPower %>
-                                </span>
-                            </div>
-                            <div class="device-info">
-                                <strong>Connected Users:</strong>
-                                <span class="ms-1">
-                                    2.4G: <%= device.userConnected2G || '0' %> users, 
-                                    5G: <%= device.userConnected5G || '0' %> users
-                                </span>
-                            </div>
-                            
-                            <!-- Form Update SSID (Single input untuk kedua band) -->
-                            <div class="mt-3">
-                                <form class="update-ssid-form" data-device-id="<%= device._id %>">
-                                    <div class="input-group input-group-sm">
-                                        <input type="text" name="ssid" class="form-control" 
-                                               placeholder="SSID" 
-                                               value="<%= device.ssid || device.ssid2G || 'N/A' %>" 
-                                               required>
-                                        <button type="submit" class="btn btn-primary" title="Update SSID">
-                                            <i class="fas fa-wifi"></i>
-                                        </button>
+            <div class="row" id="devicesGrid">
+                <% devices.forEach(function(device) { %>
+                    <div class="col-md-6 col-lg-4 device-card">
+                        <div class="card">
+                            <div class="card-body">
+                                <div class="d-flex justify-content-between align-items-center mb-3">
+                                    <h5 class="card-title mb-0">
+                                        <span class="status-indicator <%= device.online ? 'status-online' : 'status-offline' %>"></span>
+                                        <%= device.pppUsername || 'Unknown User' %>
+                                    </h5>
+                                    <button class="btn btn-sm btn-outline-primary refresh-device-btn" 
+                                            data-device-id="<%= device._id.replace(/\+/g, '%2B').replace(/\s/g, '+') %>">
+                                        <i class="fas fa-sync-alt"></i>
+                                    </button>
+                                </div>
+                                <div class="row g-3">
+                                    <div class="col-6">
+                                        <small class="text-muted d-block">IP Address</small>
+                                        <span><%= device.pppoeIP || 'N/A' %></span>
                                     </div>
-                                    <small class="text-muted">Perubahan SSID dan password berlaku untuk 2.4G dan 5G</small>
-                                </form>
-                            </div>
-
-                            <!-- Form Update Password (Single input untuk kedua band) -->
-                            <div class="mt-2">
-                                <form class="update-password-form" data-device-id="<%= device._id %>">
-                                    <div class="input-group input-group-sm">
-                                        <input type="password" name="password" class="form-control wifi-password" 
-                                               placeholder="New Password" minlength="8" required>
-                                        <button type="button" class="btn btn-outline-secondary toggle-password">
-                                            <i class="fas fa-eye"></i>
-                                        </button>
-                                        <button type="submit" class="btn btn-primary" title="Update Password">
-                                            <i class="fas fa-key"></i>
-                                        </button>
+                                    <div class="col-6">
+                                        <small class="text-muted d-block">RX Power</small>
+                                        <span class="<%= getRxPowerClass(device.rxPower) %>">
+                                            <%= device.rxPower || 'N/A' %> dBm
+                                        </span>
                                     </div>
-                                </form>
-                            </div>
-
-                            <!-- Form Update Customer Number -->
-                            <div class="mt-2">
-                                <div class="row g-2 align-items-center">
-                                    <div class="col">
-                                        <input type="text" class="form-control form-control-sm" 
-                                               placeholder="Customer Number" 
-                                               data-device-id="<%= device._id %>"
-                                               value="<%= device._tags.find(tag => /^\d+$/.test(tag)) || '' %>">
+                                    <div class="col-6">
+                                        <small class="text-muted d-block">Model</small>
+                                        <span><%= device.model || 'N/A' %></span>
                                     </div>
-                                    <div class="col-auto">
-                                        <button class="btn btn-primary btn-sm" 
-                                                onclick="updateCustomerNumber(this)"
-                                                title="Update Tag">
-                                            <i class="fas fa-tag"></i>
-                                        </button>
+                                    <div class="col-6">
+                                        <small class="text-muted d-block">Serial Number</small>
+                                        <span><%= device.serialNumber || 'N/A' %></span>
+                                    </div>
+                                    <div class="col-6">
+                                        <small class="text-muted d-block">Connected Devices</small>
+                                        <span>
+                                            <i class="fas fa-users me-1"></i>
+                                            <%= device.connectedDevices %> devices
+                                        </span>
+                                    </div>
+                                    <div class="col-6">
+                                        <small class="text-muted d-block">Last Inform</small>
+                                        <span><%= new Date(device.lastInform).toLocaleString() %></span>
                                     </div>
                                 </div>
-                            </div>
-
-                            <!-- Action Buttons -->
-                            <div class="mt-2">
-                                <button class="btn btn-primary btn-sm refresh-device" 
-                                        data-device-id="<%= device._id %>"
-                                        title="Refresh Device">
-                                    <i class="fas fa-sync-alt"></i>
-                                </button>
-                                <button class="btn btn-danger btn-sm reboot-device" 
-                                        data-device-id="<%= device._id %>"
-                                        title="Reboot Device">
-                                    <i class="fas fa-power-off"></i>
-                                </button>
                             </div>
                         </div>
                     </div>
@@ -541,68 +259,45 @@
         // Update statistics
         function updateStats() {
             const devices = document.querySelectorAll('.device-card');
-            const online = document.querySelectorAll('.status-indicator.online').length;
-            const offline = document.querySelectorAll('.status-indicator.offline').length;
+            const online = document.querySelectorAll('.status-online').length;
             const critical = document.querySelectorAll('.rx-power-critical').length;
 
             document.getElementById('totalDevices').textContent = devices.length;
             document.getElementById('onlineDevices').textContent = online;
-            document.getElementById('offlineDevices').textContent = offline;
+            document.getElementById('offlineDevices').textContent = devices.length - online;
             document.getElementById('criticalDevices').textContent = critical;
         }
 
-        // Panggil updateStats saat halaman dimuat
-        document.addEventListener('DOMContentLoaded', updateStats);
-
-        // Panggil updateStats setiap kali ada perubahan status device
-        function refreshStats() {
-            updateStats();
-        }
-
-        // Tambahkan pemanggilan refreshStats setelah setiap operasi yang mengubah status device
-        document.querySelectorAll('.refresh-device').forEach(button => {
-            button.addEventListener('click', () => {
-                setTimeout(refreshStats, 3000); // Refresh stats setelah refresh device
-            });
-        });
-
         // Search and filter functionality
+        document.getElementById('searchInput').addEventListener('input', filterDevices);
+        document.getElementById('statusFilter').addEventListener('change', filterDevices);
+        document.getElementById('rxPowerFilter').addEventListener('change', filterDevices);
+
         function filterDevices() {
             const searchTerm = document.getElementById('searchInput').value.toLowerCase();
             const statusFilter = document.getElementById('statusFilter').value;
             const rxPowerFilter = document.getElementById('rxPowerFilter').value;
 
             document.querySelectorAll('.device-card').forEach(card => {
-                // Cari PPPoE username langsung dari elemen yang berisi PPPoE
-                const pppoeText = card.querySelector('.device-info:nth-child(2)')?.textContent || '';
-                const customerNumber = card.querySelector('input[placeholder="Customer Number"]')?.value || '';
-                
-                // Debug untuk melihat nilai yang dicari
-                console.log('PPPoE Text:', pppoeText);
-                console.log('Search Term:', searchTerm);
-
-                const isOnline = card.querySelector('.status-indicator.online') !== null;
+                const username = card.querySelector('.card-title').textContent.toLowerCase();
+                const ip = card.querySelector('.col-6 span').textContent.toLowerCase();
+                const isOnline = card.querySelector('.status-online') !== null;
                 const rxPowerEl = card.querySelector('.rx-power-good, .rx-power-warning, .rx-power-critical');
                 
                 let show = true;
 
                 // Search filter
-                if (searchTerm) {
-                    // Cek apakah searchTerm ada dalam PPPoE text atau customer number
-                    const matchPPPoE = pppoeText.toLowerCase().includes(searchTerm);
-                    const matchCustomer = customerNumber.toLowerCase().includes(searchTerm);
-                    
-                    if (!matchPPPoE && !matchCustomer) {
-                        show = false;
-                    }
+                if (searchTerm && !username.includes(searchTerm) && !ip.includes(searchTerm)) {
+                    show = false;
                 }
 
-                // Status dan RX Power filter tetap sama
+                // Status filter
                 if (statusFilter !== 'all') {
                     if (statusFilter === 'online' && !isOnline) show = false;
                     if (statusFilter === 'offline' && isOnline) show = false;
                 }
 
+                // RX Power filter
                 if (rxPowerFilter !== 'all' && rxPowerEl) {
                     const powerClass = rxPowerEl.className;
                     if (rxPowerFilter === 'good' && !powerClass.includes('good')) show = false;
@@ -613,6 +308,9 @@
                 card.style.display = show ? '' : 'none';
             });
         }
+
+        // Initial stats update
+        updateStats();
 
         // Auto refresh every 30 seconds
         setInterval(() => {
@@ -652,7 +350,7 @@
             }
         });
 
-        document.querySelectorAll('.refresh-device').forEach(button => {
+        document.querySelectorAll('.refresh-device-btn').forEach(button => {
             button.addEventListener('click', async function() {
                 const deviceId = this.dataset.deviceId;
                 
@@ -693,255 +391,6 @@
                 }
             });
         });
-
-        // Event listener untuk tombol reboot
-        document.querySelectorAll('.reboot-device').forEach(button => {
-            button.addEventListener('click', async function() {
-                const deviceId = this.dataset.deviceId;
-                const deviceName = this.closest('.card').querySelector('.card-title').textContent.trim();
-                
-                // Konfirmasi dari user
-                if (!confirm(`Apakah Anda yakin ingin melakukan reboot device ${deviceName}?`)) {
-                    return;
-                }
-                
-                const originalContent = this.innerHTML;
-                
-                try {
-                    // Disable button dan tampilkan loading state
-                    this.disabled = true;
-                    this.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
-                    
-                    const response = await fetch('/reboot-device', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json'
-                        },
-                        body: JSON.stringify({ deviceId })
-                    });
-
-                    const result = await response.json();
-                    
-                    // Tampilkan alert
-                    const alertDiv = document.createElement('div');
-                    alertDiv.className = `alert alert-${result.success ? 'success' : 'danger'} alert-dismissible fade show`;
-                    alertDiv.innerHTML = `
-                        ${result.message}
-                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                    `;
-                    document.querySelector('.container').insertBefore(alertDiv, document.querySelector('.container').firstChild);
-                    
-                    // Jika berhasil, refresh device setelah 30 detik
-                    if (result.success) {
-                        setTimeout(() => {
-                            this.closest('.card').querySelector('.refresh-device').click();
-                        }, 30000);
-                    }
-                } catch (error) {
-                    console.error('Reboot error:', error);
-                    alert('Gagal melakukan reboot device');
-                } finally {
-                    // Kembalikan button ke kondisi awal
-                    this.disabled = false;
-                    this.innerHTML = originalContent;
-                }
-            });
-        });
-
-        // Toggle Password Visibility
-        document.querySelectorAll('.toggle-password').forEach(button => {
-            button.addEventListener('click', function() {
-                const passwordInput = this.closest('.input-group').querySelector('.wifi-password');
-                const eyeIcon = this.querySelector('i');
-                
-                if (passwordInput.type === 'password') {
-                    passwordInput.type = 'text';
-                    eyeIcon.classList.remove('fa-eye');
-                    eyeIcon.classList.add('fa-eye-slash');
-                } else {
-                    passwordInput.type = 'password';
-                    eyeIcon.classList.remove('fa-eye-slash');
-                    eyeIcon.classList.add('fa-eye');
-                }
-            });
-        });
-
-        // Update SSID Form Handler
-        document.querySelectorAll('.update-ssid-form').forEach(form => {
-            form.addEventListener('submit', async function(e) {
-                e.preventDefault();
-                
-                const deviceId = this.dataset.deviceId;
-                const ssidInput = this.querySelector('input[name="ssid"]');
-                const submitButton = this.querySelector('button[type="submit"]');
-                const originalButtonText = submitButton.innerHTML;
-                
-                try {
-                    // Disable form elements
-                    ssidInput.disabled = true;
-                    submitButton.disabled = true;
-                    submitButton.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Updating...';
-                    
-                    const response = await fetch('/update-wifi', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify({
-                            deviceId: deviceId,
-                            ssid2G: ssidInput.value,  // Gunakan nilai yang sama untuk kedua band
-                            ssid5G: ssidInput.value + '-5G'  // Tambahkan suffix -5G untuk band 5G
-                        })
-                    });
-
-                    const data = await response.json();
-                    showAlert(data.success ? 'success' : 'danger', data.message);
-                    
-                    if (data.success) {
-                        setTimeout(() => location.reload(), 2000);
-                    }
-                } catch (error) {
-                    console.error('Update SSID error:', error);
-                    showAlert('danger', 'Gagal mengupdate SSID');
-                } finally {
-                    ssidInput.disabled = false;
-                    submitButton.disabled = false;
-                    submitButton.innerHTML = originalButtonText;
-                }
-            });
-        });
-
-        // Update Password Form Handler
-        document.querySelectorAll('.update-password-form').forEach(form => {
-            form.addEventListener('submit', async function(e) {
-                e.preventDefault();
-                
-                const deviceId = this.dataset.deviceId;
-                const passwordInput = this.querySelector('input[name="password"]');
-                const submitButton = this.querySelector('button[type="submit"]');
-                const originalButtonText = submitButton.innerHTML;
-                
-                try {
-                    if (passwordInput.value.length < 8) {
-                        showAlert('danger', 'Password harus minimal 8 karakter');
-                        return;
-                    }
-                    
-                    passwordInput.disabled = true;
-                    submitButton.disabled = true;
-                    submitButton.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Updating...';
-                    
-                    const response = await fetch('/update-wifi', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify({
-                            deviceId: deviceId,
-                            password2G: passwordInput.value,  // Gunakan nilai yang sama untuk kedua band
-                            password5G: passwordInput.value
-                        })
-                    });
-
-                    const data = await response.json();
-                    showAlert(data.success ? 'success' : 'danger', data.message);
-                    
-                    if (data.success) {
-                        passwordInput.value = '';
-                        setTimeout(() => location.reload(), 2000);
-                    }
-                } catch (error) {
-                    console.error('Update password error:', error);
-                    showAlert('danger', 'Gagal mengupdate password');
-                } finally {
-                    passwordInput.disabled = false;
-                    submitButton.disabled = false;
-                    submitButton.innerHTML = originalButtonText;
-                }
-            });
-        });
-
-        // Fungsi untuk update nomor pelanggan
-        async function updateCustomerNumber(button) {
-            // Cari input dalam parent row yang sama
-            const row = button.closest('.row');
-            const input = row.querySelector('input[type="text"]');
-            const originalButtonText = button.innerHTML;
-            
-            try {
-                // Validasi input
-                if (!input.value || !/^\d+$/.test(input.value)) {
-                    showAlert('danger', 'Nomor pelanggan harus berupa angka');
-                    return;
-                }
-                
-                // Disable input dan button
-                input.disabled = true;
-                button.disabled = true;
-                button.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Menyimpan...';
-                
-                // Kirim request ke server
-                const response = await fetch('/update-customer-number', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        deviceId: input.dataset.deviceId,
-                        customerNumber: input.value
-                    })
-                });
-                
-                const data = await response.json();
-                
-                if (data.success) {
-                    showAlert('success', 'Nomor pelanggan berhasil diperbarui');
-                } else {
-                    throw new Error(data.message || 'Gagal mengupdate nomor pelanggan');
-                }
-            } catch (error) {
-                console.error('Error:', error);
-                showAlert('danger', 'Terjadi kesalahan: ' + error.message);
-            } finally {
-                // Re-enable input dan button
-                input.disabled = false;
-                button.disabled = false;
-                button.innerHTML = originalButtonText;
-            }
-        }
-
-        // Helper function untuk menampilkan alert
-        function showAlert(type, message) {
-            const alertDiv = document.createElement('div');
-            alertDiv.className = `alert alert-${type} alert-dismissible fade show`;
-            alertDiv.innerHTML = `
-                ${message}
-                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-            `;
-            document.querySelector('.container').insertBefore(alertDiv, document.querySelector('.container').firstChild);
-            
-            // Auto hide after 5 seconds
-            setTimeout(() => {
-                alertDiv.remove();
-            }, 5000);
-        }
-
-        // Pastikan event listener terpasang dengan benar
-        document.addEventListener('DOMContentLoaded', function() {
-            const searchInput = document.getElementById('searchInput');
-            const statusFilter = document.getElementById('statusFilter');
-            const rxPowerFilter = document.getElementById('rxPowerFilter');
-
-            if (searchInput) {
-                searchInput.addEventListener('input', filterDevices);
-            }
-            if (statusFilter) {
-                statusFilter.addEventListener('change', filterDevices);
-            }
-            if (rxPowerFilter) {
-                rxPowerFilter.addEventListener('change', filterDevices);
-            }
-        });
     </script>
 </body>
-</html>
+</html> 

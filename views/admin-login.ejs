@@ -29,7 +29,6 @@
         <h2 class="text-center mb-4">
             <i class="fas fa-user-shield me-2"></i>Admin Login
         </h2>
-        <p id="trial-notification" class="text-center text-danger mb-3">Aplikasi ini masih dalam mode TRIAL. Hubungi 081947215703 untuk versi PRO.</p>
 
         <% if (error) { %>
             <div class="alert alert-danger">
@@ -38,65 +37,15 @@
             </div>
         <% } %>
 
-        <form id="admin-login-form" action="/admin/login" method="POST">
+        <form action="/admin/login" method="POST">
             <div class="mb-3">
-                <input type="text" class="form-control" name="username" id="username" placeholder="Username" required>
+                <input type="text" class="form-control" name="username" placeholder="Username" required>
             </div>
             <div class="mb-3">
-                <input type="password" class="form-control" name="password" id="password" placeholder="Password" required>
-            </div>
-            <div id="token-container" class="mb-3">
-                <input type="text" id="token-input" class="form-control" placeholder="Masukkan TOKEN untuk versi PRO">
+                <input type="password" class="form-control" name="password" placeholder="Password" required>
             </div>
             <button type="submit" class="btn btn-primary w-100">Login</button>
         </form>
     </div>
-
-    <script>
-        // Check PRO status when page loads
-        fetch('/check-pro-status')
-            .then(response => response.json())
-            .then(data => {
-                if (data.isPro) {
-                    document.getElementById('trial-notification').style.display = 'none';
-                    document.getElementById('token-container').style.display = 'none';
-                }
-            });
-
-        // Handle form submission
-        document.getElementById('admin-login-form').addEventListener('submit', function(e) {
-            e.preventDefault();
-            
-            const token = document.getElementById('token-input').value;
-            
-            // If token field is visible and has value, validate it
-            if (document.getElementById('token-container').style.display !== 'none' && token) {
-                fetch('/activate-pro', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({ token })
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success) {
-                        document.getElementById('trial-notification').style.display = 'none';
-                        document.getElementById('token-container').style.display = 'none';
-                        this.submit();
-                    } else {
-                        alert(data.message || 'TOKEN tidak valid. Silakan masukkan TOKEN yang benar.');
-                    }
-                })
-                .catch(error => {
-                    console.error('Error:', error);
-                    alert('Terjadi kesalahan saat aktivasi. Silakan coba lagi.');
-                });
-            } else {
-                // If token container is hidden (already PRO) or no token entered
-                this.submit();
-            }
-        });
-    </script>
 </body>
-</html>
+</html> 

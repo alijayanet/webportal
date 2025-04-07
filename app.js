@@ -2,13 +2,7 @@ const express = require('express');
 const session = require('express-session');
 const path = require('path');
 const axios = require('axios');
-const fs = require('fs');
 require('dotenv').config();
-
-// Fungsi untuk apa yah
-function decodeToken(encoded) {
-    return Buffer.from(encoded, 'base64').toString('utf-8');
-}
 
 const app = express();
 
@@ -22,52 +16,6 @@ app.use(session({
     saveUninitialized: true
 }));
 
-const PRO_STATUS_FILE = path.join(__dirname, 'pro-status.json');
-const SETTINGS_FILE = path.join(__dirname, 'settings.json');
-
-// Initialize settings file if it doesn't exist
-if (!fs.existsSync(SETTINGS_FILE)) {
-    const defaultSettings = {
-        otpEnabled: false,
-        otpExpiry: 300,
-        otpLength: 6,
-        whatsappGateway: "fonnte",
-        gateways: {
-            fonnte: {
-                token: "",
-                enabled: false
-            },
-            wablas: {
-                token: "",
-                enabled: false,
-                serverUrl: "https://solo.wablas.com/api"
-            },
-            mpwa: {
-                token: "",
-                enabled: false,
-                serverUrl: "https://mpwa.id/api",
-                sender: ""    // Tambahkan sender untuk MPWA
-            }
-        },
-        otpMessage: "Kode OTP Anda untuk login WebPortal: {{otp}}. Kode ini berlaku selama {{expiry}} menit.",
-        adminWhatsapp: ""
-    };
-    fs.writeFileSync(SETTINGS_FILE, JSON.stringify(defaultSettings, null, 2));
-}
-
-// Load settings
-let settings = {};
-try {
-    settings = JSON.parse(fs.readFileSync(SETTINGS_FILE));
-} catch (error) {
-    console.error('Error loading settings:', error);
-    settings = {
-        otpEnabled: false,
-        otpExpiry: 300,
-        otpLength: 6
-    };
-}
-
 // Set view engine
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
@@ -77,334 +25,9 @@ app.get('/', (req, res) => {
     res.render('login', { error: null });
 });
 
-app.get('/login', (req, res) => {
-    res.render('login', { error: null });
-});
-
-app.get('/verify-otp', (req, res) => {
-    // Redirect ke login jika tidak ada username
-    if (!req.query.username) {
-        return res.redirect('/login');
-    }
-    // Baca pengaturan OTP
-    const settings = JSON.parse(fs.readFileSync(SETTINGS_FILE));
-    
-    res.render('verify-otp', { 
-        username: req.query.username, 
-        error: null,
-        otpLength: settings.otpLength,
-        otpExpiry: Math.floor(settings.otpExpiry / 60) // Convert seconds to minutes
-    });
-});
-
-// Fungsi untuk generate OTP
-function generateOTP(length = 6) {
-    const digits = '0123456789';
-    let OTP = '';
-    for (let i = 0; i < length; i++) {
-        OTP += digits[Math.floor(Math.random() * 10)];
-    }
-    return OTP;
-}
-
-// Simpan OTP sementara (dalam praktik nyata sebaiknya gunakan database)
-const otpStore = new Map();
-
-// Fungsi untuk format nomor WhatsApp
-function formatWhatsAppNumber(number) {
-    // Hapus semua spasi dan karakter non-digit
-    number = number.replace(/\D/g, '');
-    
-    // Jika dimulai dengan 0, ganti dengan 62
-    if (number.startsWith('0')) {
-        number = '62' + number.slice(1);
-    }
-    // Jika dimulai dengan 62, biarkan apa adanya
-    else if (number.startsWith('62')) {
-        number = number;
-    }
-    // Jika tidak dimulai dengan 0 atau 62, tambahkan 62
-    else {
-        number = '62' + number;
-    }
-    
-    return number;
-}
-
-// Fungsi untuk mengirim pesan WhatsApp berdasarkan gateway yang dipilih
-async function sendWhatsAppMessage(phoneNumber, message) {
-    try {
-        // Format nomor WhatsApp
-        const formattedNumber = formatWhatsAppNumber(phoneNumber);
-        
-        // Baca pengaturan
-        const settings = JSON.parse(fs.readFileSync(SETTINGS_FILE));
-        const gateway = settings.whatsappGateway;
-        
-        console.log(`Mengirim pesan ke ${formattedNumber} menggunakan gateway ${gateway}`);
-        
-        switch (gateway) {
-            case 'fonnte':
-                return await sendViaFonnte(formattedNumber, message);
-            case 'wablas':
-                return await sendViaWablas(formattedNumber, message);
-            case 'mpwa':
-                return await sendViaMpwa(formattedNumber, message);
-            default:
-                console.error('Gateway tidak dikenal:', gateway);
-                return false;
-        }
-    } catch (error) {
-        console.error('Error sending WhatsApp message:', error);
-        return false;
-    }
-}
-
-// Fungsi untuk kirim pesan via Fonnte
-async function sendViaFonnte(phoneNumber, message) {
-    try {
-        const settings = JSON.parse(fs.readFileSync(SETTINGS_FILE));
-        const token = settings.gateways.fonnte.token;
-        
-        if (!token) {
-            console.error('Fonnte token tidak dikonfigurasi');
-            return false;
-        }
-        
-        const response = await fetch('https://api.fonnte.com/send', {
-            method: 'POST',
-            headers: {
-                'Authorization': token,
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                target: phoneNumber,
-                message: message
-            })
-        });
-        
-        const data = await response.json();
-        console.log('Fonnte response:', data);
-        
-        return response.ok;
-    } catch (error) {
-        console.error('Error sending via Fonnte:', error);
-        return false;
-    }
-}
-
-// Fungsi untuk kirim pesan via Wablas
-async function sendViaWablas(phoneNumber, message) {
-    try {
-        const settings = JSON.parse(fs.readFileSync(SETTINGS_FILE));
-        const token = settings.gateways.wablas.token;
-        const serverUrl = settings.gateways.wablas.serverUrl;
-        
-        if (!token || !serverUrl) {
-            console.error('Wablas token atau server URL tidak dikonfigurasi');
-            return false;
-        }
-        
-        const response = await fetch(`${serverUrl}/send-message`, {
-            method: 'POST',
-            headers: {
-                'Authorization': token,
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                phone: phoneNumber,
-                message: message
-            })
-        });
-        
-        const data = await response.json();
-        console.log('Wablas response:', data);
-        
-        return data.status === true;
-    } catch (error) {
-        console.error('Error sending via Wablas:', error);
-        return false;
-    }
-}
-
-// Fungsi untuk kirim pesan via MPWA
-async function sendViaMpwa(phoneNumber, message) {
-    try {
-        const settings = JSON.parse(fs.readFileSync(SETTINGS_FILE));
-        const token = settings.gateways.mpwa.token;
-        const serverUrl = settings.gateways.mpwa.serverUrl;
-        const sender = settings.gateways.mpwa.sender || 'default';
-        
-        if (!token || !serverUrl) {
-            console.error('MPWA token atau server URL tidak dikonfigurasi');
-            return false;
-        }
-        
-        // Berdasarkan dokumentasi PHP yang diberikan
-        const response = await fetch(`${serverUrl}/send-message`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/x-www-form-urlencoded',
-            },
-            body: new URLSearchParams({
-                'api_key': token,
-                'sender': sender,
-                'number': phoneNumber,
-                'message': message
-            })
-        });
-        
-        const data = await response.json();
-        console.log('MPWA response:', data);
-        
-        return data.status === 'success' || data.status === 'true' || data.status === true;
-    } catch (error) {
-        console.error('Error sending via MPWA:', error);
-        return false;
-    }
-}
-
-// Fungsi untuk kirim OTP
-async function sendOTP(customerNumber, otp) {
-    try {
-        // Baca pengaturan
-        const settings = JSON.parse(fs.readFileSync(SETTINGS_FILE));
-        
-        // Siapkan pesan OTP
-        let message = settings.otpMessage || "Kode OTP Anda untuk login WebPortal: {{otp}}. Kode ini berlaku selama {{expiry}} menit.";
-        
-        // Ganti placeholder dengan nilai sebenarnya
-        message = message.replace('{{otp}}', otp);
-        message = message.replace('{{expiry}}', Math.floor(settings.otpExpiry / 60));
-        
-        // Kirim pesan
-        return await sendWhatsAppMessage(customerNumber, message);
-    } catch (error) {
-        console.error('Error sending OTP:', error);
-        return false;
-    }
-}
-
-// Endpoint untuk login customer dengan OTP
+// Login handler
 app.post('/login', async (req, res) => {
     const { username } = req.body;
-    if (!username) {
-        return res.render('login', { error: 'Nomor pelanggan diperlukan' });
-    }
-
-    try {
-        console.log('Attempting to connect to GenieACS server...');
-        
-        // Get all devices first
-        const response = await axios.get(`${process.env.GENIEACS_URL}/devices`, {
-            auth: {
-                username: process.env.GENIEACS_USERNAME,
-                password: process.env.GENIEACS_PASSWORD
-            },
-            headers: {
-                'Accept': 'application/json'
-            }
-        });
-
-        console.log('Total devices:', response.data.length);
-
-        // Find device with matching tag
-        const device = response.data.find(d => {
-            console.log('Checking device:', {
-                id: d._id,
-                tags: d._tags,
-                rawDevice: JSON.stringify(d)
-            });
-            return d._tags && d._tags.includes(username);
-        });
-
-        if (device) {
-            console.log('Device found:', {
-                deviceId: device._id,
-                tags: device._tags
-            });
-
-            // Baca pengaturan OTP
-            const settings = JSON.parse(fs.readFileSync(SETTINGS_FILE));
-
-            // Cek apakah OTP diaktifkan di pengaturan
-            if (settings.otpEnabled) {
-                // Generate dan kirim OTP
-                const otp = generateOTP(settings.otpLength);
-                const success = await sendOTP(username, otp);
-                
-                if (success) {
-                    // Simpan OTP dengan waktu kadaluarsa sesuai pengaturan
-                    otpStore.set(username, {
-                        code: otp,
-                        expiry: Date.now() + (settings.otpExpiry * 1000)
-                    });
-                    // Redirect ke halaman verifikasi OTP
-                    res.render('verify-otp', { username, error: null, otpLength: settings.otpLength, otpExpiry: Math.floor(settings.otpExpiry / 60) });
-                } else {
-                    res.render('login', { error: 'Gagal mengirim OTP, silakan coba lagi' });
-                }
-            } else {
-                // Jika OTP dinonaktifkan, langsung login
-                req.session.username = username;
-                req.session.deviceId = device._id;
-                res.redirect('/dashboard');
-            }
-        } else {
-            // Debug: Log all devices and their tags
-            console.log('No device found with tag:', username);
-            console.log('Available devices:', response.data.map(d => ({
-                id: d._id,
-                tags: d._tags || [],
-                rawDevice: JSON.stringify(d)
-            })));
-
-            res.render('login', { error: 'Nomor pelanggan tidak ditemukan' });
-        }
-    } catch (error) {
-        console.error('Login error:', error);
-        console.error('Full error details:', {
-            message: error.message,
-            status: error.response?.status,
-            data: error.response?.data,
-            url: error.config?.url
-        });
-        res.render('login', { error: 'Terjadi kesalahan saat login' });
-    }
-});
-
-// Endpoint untuk verifikasi OTP
-app.post('/verify-otp', async (req, res) => {
-    const { username, otp } = req.body;
-    
-    // Baca pengaturan OTP
-    const settings = JSON.parse(fs.readFileSync(SETTINGS_FILE));
-    
-    // Verifikasi OTP
-    const storedOTP = otpStore.get(username);
-    console.log('Verifying OTP:', {
-        input: otp,
-        stored: storedOTP?.code,
-        expiry: storedOTP?.expiry,
-        now: Date.now(),
-        isExpired: storedOTP ? Date.now() > storedOTP.expiry : true
-    });
-
-    // Pastikan tipe data sama (string) saat membandingkan
-    if (!storedOTP || 
-        String(storedOTP.code) !== String(otp) || 
-        Date.now() > storedOTP.expiry) {
-        return res.render('verify-otp', { 
-            username, 
-            error: 'OTP tidak valid atau kadaluarsa',
-            otpLength: settings.otpLength,
-            otpExpiry: Math.floor(settings.otpExpiry / 60)
-        });
-    }
-
-    // Hapus OTP yang sudah digunakan
-    otpStore.delete(username);
-
     try {
         console.log('Attempting to connect to GenieACS server...');
         
@@ -467,7 +90,6 @@ app.post('/verify-otp', async (req, res) => {
 const parameterPaths = {
     pppUsername: [
         'VirtualParameters.pppoeUsername',
-        'VirtualParameters.pppUsername',
         'InternetGatewayDevice.WANDevice.1.WANConnectionDevice.1.WANPPPConnection.1.Username'
     ],
     rxPower: [
@@ -477,7 +99,6 @@ const parameterPaths = {
     ],
     pppMac: [
         'VirtualParameters.pppMac',
-        'VirtualParameters.WanMac',
         'InternetGatewayDevice.WANDevice.1.WANConnectionDevice.1.WANPPPConnection.1.MACAddress',
         'InternetGatewayDevice.WANDevice.1.WANConnectionDevice.1.WANPPPConnection.2.MACAddress',
         'InternetGatewayDevice.WANDevice.1.WANConnectionDevice.1.WANIPConnection.1.MACAddress',
@@ -498,20 +119,8 @@ const parameterPaths = {
     ssid: [
         'InternetGatewayDevice.LANDevice.1.WLANConfiguration.1.SSID'
     ],
-    ssid2G: [
-        'InternetGatewayDevice.LANDevice.1.WLANConfiguration.1.SSID'
-    ],
-    ssid5G: [
-        'InternetGatewayDevice.LANDevice.1.WLANConfiguration.5.SSID'
-    ],
     userConnected: [
         'InternetGatewayDevice.LANDevice.1.WLANConfiguration.1.TotalAssociations'
-    ],
-    userConnected2G: [
-        'InternetGatewayDevice.LANDevice.1.WLANConfiguration.1.TotalAssociations'
-    ],
-    userConnected5G: [
-        'InternetGatewayDevice.LANDevice.1.WLANConfiguration.5.TotalAssociations'
     ],
     uptime: [
         'VirtualParameters.getdeviceuptime'
@@ -592,8 +201,6 @@ app.get('/dashboard', async (req, res) => {
 
         // Get device data
         const deviceData = {
-            _id: device._id,
-            _tags: device._tags || [],
             username: req.session.username,
             model: model,
             serialNumber: serialNumber,
@@ -602,11 +209,7 @@ app.get('/dashboard', async (req, res) => {
             pppoeIP: getParameterWithPaths(device, parameterPaths.pppoeIP),
             tr069IP: getParameterWithPaths(device, parameterPaths.tr069IP),
             ssid: getParameterWithPaths(device, parameterPaths.ssid),
-            ssid2G: getParameterWithPaths(device, parameterPaths.ssid2G),
-            ssid5G: getParameterWithPaths(device, parameterPaths.ssid5G),
             userConnected: getParameterWithPaths(device, parameterPaths.userConnected) || '0',
-            userConnected2G: getParameterWithPaths(device, parameterPaths.userConnected2G) || '0',
-            userConnected5G: getParameterWithPaths(device, parameterPaths.userConnected5G) || '0',
             rxPower: getParameterWithPaths(device, parameterPaths.rxPower),
             uptime: getParameterWithPaths(device, parameterPaths.uptime),
             registeredTime: getParameterWithPaths(device, parameterPaths.registeredTime),
@@ -637,11 +240,7 @@ app.get('/dashboard', async (req, res) => {
                 pppoeIP: 'N/A',
                 tr069IP: 'N/A',
                 ssid: 'N/A',
-                ssid2G: 'N/A',
-                ssid5G: 'N/A',
                 userConnected: '0',
-                userConnected2G: '0',
-                userConnected5G: '0',
                 rxPower: 'N/A',
                 uptime: 'N/A',
                 registeredTime: 'N/A',
@@ -778,124 +377,147 @@ function encodeDeviceId(deviceId) {
 // Update SSID endpoint
 app.post('/update-wifi', async (req, res) => {
     try {
-        const { ssid2G, ssid5G, password2G, password5G, deviceId } = req.body;
-        
-        console.log('Update WiFi request:', {
+        const { ssid, password } = req.body;
+        const deviceId = req.session.deviceId;
+
+        console.log('Update WiFi Request:', {
             deviceId,
-            ssid2G,
-            ssid5G,
-            password2G: password2G ? '***' : undefined,
-            password5G: password5G ? '***' : undefined
+            ssid,
+            password: password ? '********' : undefined
         });
-        
+
+        if (!deviceId) {
+            throw new Error('Device ID tidak valid');
+        }
+
+        // Cek device terlebih dahulu
+        const deviceCheck = await axios.get(`${process.env.GENIEACS_URL}/devices`, {
+            params: {
+                query: JSON.stringify({ "_id": deviceId })
+            },
+            auth: {
+                username: process.env.GENIEACS_USERNAME,
+                password: process.env.GENIEACS_PASSWORD
+            }
+        });
+
+        if (!deviceCheck.data || deviceCheck.data.length === 0) {
+            throw new Error('Device tidak ditemukan');
+        }
+
+        const actualDeviceId = deviceCheck.data[0]._id;
+        console.log('Actual device ID from server:', actualDeviceId);
+
+        // Update SSID atau Password
         const parameterValues = [];
         
-        if (ssid2G) {
+        if (ssid) {
             parameterValues.push(
-                ["InternetGatewayDevice.LANDevice.1.WLANConfiguration.1.SSID", ssid2G, "xsd:string"]
-            );
-        }
-        
-        if (ssid5G) {
-            parameterValues.push(
-                ["InternetGatewayDevice.LANDevice.1.WLANConfiguration.5.SSID", ssid5G, "xsd:string"]
+                ["InternetGatewayDevice.LANDevice.1.WLANConfiguration.1.SSID", ssid, "xsd:string"]
             );
         }
 
-        if (password2G) {
+        if (password) {
+            // Sesuai dengan virtual parameter
             parameterValues.push(
-                ["InternetGatewayDevice.LANDevice.1.WLANConfiguration.1.PreSharedKey.1.KeyPassphrase", password2G, "xsd:string"],
-                ["InternetGatewayDevice.LANDevice.1.WLANConfiguration.1.KeyPassphrase", password2G, "xsd:string"]
+                // Primary password paths
+                ["InternetGatewayDevice.LANDevice.1.WLANConfiguration.1.PreSharedKey.1.KeyPassphrase", password, "xsd:string"],
+                ["InternetGatewayDevice.LANDevice.1.WLANConfiguration.1.KeyPassphrase", password, "xsd:string"],
+                // Additional paths untuk memastikan password terupdate
+                ["InternetGatewayDevice.LANDevice.1.WLANConfiguration.1.PreSharedKey.1.PreSharedKey", password, "xsd:string"]
             );
-        }
 
-        if (password5G) {
-            parameterValues.push(
-                ["InternetGatewayDevice.LANDevice.1.WLANConfiguration.5.PreSharedKey.1.KeyPassphrase", password5G, "xsd:string"],
-                ["InternetGatewayDevice.LANDevice.1.WLANConfiguration.5.KeyPassphrase", password5G, "xsd:string"]
-            );
-        }
+            // Tambah task untuk refresh setelah update password
+            const refreshTasks = [
+                {
+                    name: "refreshObject",
+                    objectName: "InternetGatewayDevice.LANDevice.1.WLANConfiguration.1"
+                },
+                {
+                    name: "refreshObject",
+                    objectName: "VirtualParameters.wifiPassword"
+                }
+            ];
 
-        if (parameterValues.length === 0) {
-            return res.status(400).json({
-                success: false,
-                message: 'Tidak ada parameter yang diubah'
-            });
-        }
-
-        // Encode device ID properly for URL
-        const encodedDeviceId = encodeURIComponent(deviceId);
-        
-        // Kirim task ke GenieACS
-        const taskResponse = await axios({
-            method: 'POST',
-            url: `${process.env.GENIEACS_URL}/devices/${encodedDeviceId}/tasks`,
-            data: {
-                name: "setParameterValues",
-                parameterValues: parameterValues
-            },
-            auth: {
-                username: process.env.GENIEACS_USERNAME,
-                password: process.env.GENIEACS_PASSWORD
-            },
-            headers: {
-                'Content-Type': 'application/json'
+            // Kirim task refresh
+            for (const task of refreshTasks) {
+                try {
+                    await axios.post(
+                        `${process.env.GENIEACS_URL}/devices/${encodeURIComponent(actualDeviceId)}/tasks`,
+                        task,
+                        {
+                            auth: {
+                                username: process.env.GENIEACS_USERNAME,
+                                password: process.env.GENIEACS_PASSWORD
+                            }
+                        }
+                    );
+                    console.log(`Refresh task sent: ${task.objectName}`);
+                } catch (refreshError) {
+                    console.warn(`Warning: Failed to send refresh task for ${task.objectName}:`, refreshError.message);
+                }
             }
-        });
+        }
 
-        console.log('Update WiFi response:', {
-            status: taskResponse.status,
-            data: taskResponse.data
-        });
+        if (parameterValues.length > 0) {
+            // Kirim update parameter
+            const response = await axios.post(
+                `${process.env.GENIEACS_URL}/devices/${encodeURIComponent(actualDeviceId)}/tasks`,
+                {
+                    name: "setParameterValues",
+                    parameterValues: parameterValues
+                },
+                {
+                    auth: {
+                        username: process.env.GENIEACS_USERNAME,
+                        password: process.env.GENIEACS_PASSWORD
+                    }
+                }
+            );
 
-        // Kirim connection request untuk menerapkan perubahan
-        await axios({
-            method: 'POST',
-            url: `${process.env.GENIEACS_URL}/devices/${encodedDeviceId}/tasks`,
-            data: {
-                name: "refreshObject",
-                objectName: "InternetGatewayDevice.LANDevice.1.WLANConfiguration"
-            },
-            auth: {
-                username: process.env.GENIEACS_USERNAME,
-                password: process.env.GENIEACS_PASSWORD
-            },
-            headers: {
-                'Content-Type': 'application/json'
+            console.log('Update response:', response.status, response.data);
+
+            // Tunggu sebentar untuk memastikan perubahan diterapkan
+            await new Promise(resolve => setTimeout(resolve, 5000));
+
+            // Kirim connection request untuk memastikan perubahan diterapkan
+            try {
+                await axios.post(
+                    `${process.env.GENIEACS_URL}/devices/${encodeURIComponent(actualDeviceId)}/tasks?connection_request`,
+                    {},
+                    {
+                        auth: {
+                            username: process.env.GENIEACS_USERNAME,
+                            password: process.env.GENIEACS_PASSWORD
+                        }
+                    }
+                );
+            } catch (connError) {
+                console.warn('Warning: Connection request failed:', connError.message);
             }
-        });
+        }
 
-        res.json({
-            success: true,
-            message: getSuccessMessage(ssid2G, ssid5G, password2G, password5G)
-        });
+        res.json({ success: true, message: 'Pengaturan WiFi berhasil diupdate' });
+
     } catch (error) {
-        console.error('Error updating WiFi settings:', error);
-        res.status(500).json({
-            success: false,
-            message: 'Gagal mengupdate pengaturan WiFi: ' + (error.message || 'Unknown error')
+        console.error('Update WiFi error:', {
+            message: error.message,
+            status: error.response?.status,
+            statusText: error.response?.statusText,
+            data: error.response?.data,
+            config: {
+                url: error.config?.url,
+                method: error.config?.method,
+                data: error.config?.data
+            }
+        });
+        
+        res.status(500).json({ 
+            success: false, 
+            message: error.message || 'Gagal mengupdate pengaturan WiFi'
         });
     }
 });
-
-// Helper function untuk mendapatkan pesan sukses yang sesuai
-function getSuccessMessage(ssid2G, ssid5G, password2G, password5G) {
-    if (ssid2G && !ssid5G && !password2G && !password5G) {
-        return 'SSID 2.4G berhasil diperbarui';
-    } else if (!ssid2G && ssid5G && !password2G && !password5G) {
-        return 'SSID 5G berhasil diperbarui';
-    } else if (!ssid2G && !ssid5G && password2G && !password5G) {
-        return 'Password WiFi 2.4G berhasil diperbarui';
-    } else if (!ssid2G && !ssid5G && !password2G && password5G) {
-        return 'Password WiFi 5G berhasil diperbarui';
-    } else if (ssid2G && ssid5G && !password2G && !password5G) {
-        return 'SSID 2.4G dan 5G berhasil diperbarui';
-    } else if (!ssid2G && !ssid5G && password2G && password5G) {
-        return 'Password WiFi 2.4G dan 5G berhasil diperbarui';
-    } else {
-        return 'Pengaturan WiFi berhasil diperbarui';
-    }
-}
 
 // Tambahkan helper function untuk RX Power class
 const getRxPowerClass = (rxPower) => {
@@ -921,10 +543,6 @@ app.get('/admin', async (req, res) => {
         });
 
         const devices = response.data.map(device => {
-            const activeDevices = getParameterWithPaths(device, ['VirtualParameters.activedevices']) || '0';
-            // Asumsikan setengah dari total activedevices untuk masing-masing band
-            const devicesPerBand = Math.ceil(parseInt(activeDevices) / 2);
-            
             // Cek status berdasarkan last inform time
             const isOnline = getDeviceStatus(device._lastInform);
             
@@ -936,7 +554,6 @@ app.get('/admin', async (req, res) => {
 
             return {
                 _id: device._id,
-                _tags: device._tags || [],
                 online: isOnline,
                 lastInform: device._lastInform || new Date(),
                 pppUsername: getParameterWithPaths(device, parameterPaths.pppUsername) || 'Unknown',
@@ -944,19 +561,14 @@ app.get('/admin', async (req, res) => {
                 rxPower: getParameterWithPaths(device, parameterPaths.rxPower) || 'N/A',
                 model: getParameterWithPaths(device, parameterPaths.productClass) || 'N/A',
                 serialNumber: getParameterWithPaths(device, parameterPaths.serialNumber) || 'N/A',
-                ssid: getParameterWithPaths(device, parameterPaths.ssid) || '',
-                connectedDevices: connectedDevices,
-                mac: getParameterWithPaths(device, [...parameterPaths.pppMac, ...parameterPaths.pppMacWildcard]) || 'N/A',
-                userConnected2G: devicesPerBand.toString(),
-                userConnected5G: devicesPerBand.toString(),
+                connectedDevices: connectedDevices
             };
         });
 
         res.render('admin', { 
             devices,
             getRxPowerClass,
-            error: null,
-            settings: JSON.parse(fs.readFileSync(SETTINGS_FILE))
+            error: null
         });
 
     } catch (error) {
@@ -964,8 +576,7 @@ app.get('/admin', async (req, res) => {
         res.render('admin', { 
             devices: [],
             getRxPowerClass,
-            error: 'Gagal memuat data perangkat: ' + error.message,
-            settings: {}
+            error: 'Gagal memuat data perangkat: ' + error.message
         });
     }
 });
@@ -1001,14 +612,12 @@ app.get('/admin/login', (req, res) => {
 
 // Update logout to handle admin session
 app.get('/logout', (req, res) => {
+    if (req.session.isAdmin) {
+        req.session.destroy();
+        return res.redirect('/admin/login');
+    }
     req.session.destroy();
     res.redirect('/');
-});
-
-// Tambahkan route khusus untuk logout admin
-app.get('/admin/logout', (req, res) => {
-    req.session.destroy();
-    res.redirect('/admin/login');
 });
 
 // Add this endpoint to handle device refresh
@@ -1026,14 +635,14 @@ app.post('/refresh-device', async (req, res) => {
         // Refresh all parameters
         await axios.post(
             `${process.env.GENIEACS_URL}/devices/${encodedDeviceId}/tasks?connection_request`,
-            { name: "refreshObject", objectName: "" },
+            {
+                name: "refreshObject",
+                objectName: ""  // Empty string means refresh all parameters
+            },
             {
                 auth: {
                     username: process.env.GENIEACS_USERNAME,
                     password: process.env.GENIEACS_PASSWORD
-                },
-                headers: {
-                    'Content-Type': 'application/json'
                 }
             }
         );
@@ -1079,9 +688,11 @@ app.post('/admin/refresh-device/:deviceId', async (req, res) => {
 
         // Construct GenieACS URLs
         const baseUrl = process.env.GENIEACS_URL.replace(/\/$/, ''); // Remove trailing slash if exists
-        const refreshUrl = `${baseUrl}/devices/${originalDeviceId}/tasks?connection_request`;
+        const refreshUrl = `${baseUrl}/devices/${originalDeviceId}/tasks`;
+        const connectionUrl = `${baseUrl}/devices/${originalDeviceId}/tasks?connection_request`;
 
         console.log('Refresh URL:', refreshUrl);
+        console.log('Connection URL:', connectionUrl);
 
         // Verify device exists first
         try {
@@ -1098,32 +709,42 @@ app.post('/admin/refresh-device/:deviceId', async (req, res) => {
 
             console.log('Device found in GenieACS');
 
-            // Encode device ID properly for URL
-            const encodedDeviceId = encodeURIComponent(originalDeviceId);
-            console.log('Encoded deviceId:', encodedDeviceId);
-
             // Send refresh task
-            const taskResponse = await axios({
-                method: 'POST',
-                url: `${baseUrl}/devices/${encodedDeviceId}/tasks`,
-                data: {
-                    name: "setParameterValues",
-                    parameterValues: [["InternetGatewayDevice.ManagementServer.PeriodicInformEnable", "1", "xsd:boolean"]]
+            const refreshResponse = await axios.post(
+                refreshUrl,
+                {
+                    name: "refreshObject",
+                    objectName: ""
                 },
-                auth: {
-                    username: process.env.GENIEACS_USERNAME,
-                    password: process.env.GENIEACS_PASSWORD
-                },
-                headers: {
-                    'Content-Type': 'application/json'
+                {
+                    auth: {
+                        username: process.env.GENIEACS_USERNAME,
+                        password: process.env.GENIEACS_PASSWORD
+                    },
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
                 }
-            });
+            );
 
-            console.log('Task response:', {
-                status: taskResponse.status,
-                data: taskResponse.data,
-                url: taskResponse.config.url
-            });
+            console.log('Refresh task response:', refreshResponse.status);
+
+            // Send connection request
+            const connectionResponse = await axios.post(
+                connectionUrl,
+                {},
+                {
+                    auth: {
+                        username: process.env.GENIEACS_USERNAME,
+                        password: process.env.GENIEACS_PASSWORD
+                    },
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                }
+            );
+
+            console.log('Connection request response:', connectionResponse.status);
 
             // Wait for tasks to be processed
             await new Promise(resolve => setTimeout(resolve, 3000));
@@ -1182,40 +803,36 @@ app.post('/admin/refresh-all', async (req, res) => {
 
         const refreshPromises = response.data.map(async (device) => {
             try {
-                // Encode device ID properly for URL
-                const encodedDeviceId = encodeURIComponent(device._id);
-                console.log('Processing device:', {
-                    original: device._id,
-                    encoded: encodedDeviceId
-                });
-
-                // Send refresh task
-                const result = await axios({
-                    method: 'POST',
-                    url: `${process.env.GENIEACS_URL}/devices/${encodedDeviceId}/tasks`,
-                    data: {
-                        name: "setParameterValues",
-                        parameterValues: [["InternetGatewayDevice.ManagementServer.PeriodicInformEnable", "1", "xsd:boolean"]]
+                // Kirim refresh task
+                await axios.post(
+                    `${process.env.GENIEACS_URL}/devices/${encodeURIComponent(device._id)}/tasks`,
+                    {
+                        name: "refreshObject",
+                        objectName: ""
                     },
-                    auth: {
-                        username: process.env.GENIEACS_USERNAME,
-                        password: process.env.GENIEACS_PASSWORD
-                    },
-                    headers: {
-                        'Content-Type': 'application/json'
+                    {
+                        auth: {
+                            username: process.env.GENIEACS_USERNAME,
+                            password: process.env.GENIEACS_PASSWORD
+                        }
                     }
-                });
+                );
 
-                console.log('Device refresh result:', {
-                    deviceId: device._id,
-                    status: result.status,
-                    data: result.data,
-                    url: result.config.url
-                });
+                // Kirim connection request
+                await axios.post(
+                    `${process.env.GENIEACS_URL}/devices/${encodeURIComponent(device._id)}/tasks?connection_request`,
+                    {},
+                    {
+                        auth: {
+                            username: process.env.GENIEACS_USERNAME,
+                            password: process.env.GENIEACS_PASSWORD
+                        }
+                    }
+                );
 
                 return { deviceId: device._id, success: true };
             } catch (error) {
-                console.error('Error refreshing device:', error);
+                console.warn(`Failed to refresh device ${device._id}:`, error.message);
                 return { deviceId: device._id, success: false, error: error.message };
             }
         });
@@ -1242,366 +859,7 @@ app.post('/admin/refresh-all', async (req, res) => {
     }
 });
 
-// Ganti dengan fungsi enkripsi yang lebih aman
-function encryptToken(text) {
-    const crypto = require('crypto');
-    const algorithm = 'aes-256-ctr';
-    const secretKey = process.env.SECRET_KEY || 'default-secret-key-12345';
-    const iv = crypto.randomBytes(16);
-
-    const cipher = crypto.createCipheriv(algorithm, secretKey, iv);
-    const encrypted = Buffer.concat([cipher.update(text), cipher.final()]);
-
-    return {
-        iv: iv.toString('hex'),
-        content: encrypted.toString('hex')
-    };
-}
-
-function decryptToken(hash) {
-    const crypto = require('crypto');
-    const algorithm = 'aes-256-ctr';
-    const secretKey = process.env.SECRET_KEY || 'default-secret-key-12345';
-    const iv = Buffer.from(hash.iv, 'hex');
-    const content = Buffer.from(hash.content, 'hex');
-
-    const decipher = crypto.createDecipheriv(algorithm, secretKey, iv);
-    const decrypted = Buffer.concat([decipher.update(content), decipher.final()]);
-
-    return decrypted.toString();
-}
-
-// Endpoint untuk mengaktifkan PRO
-app.post('/activate-pro', (req, res) => {
-    const { token } = req.body;
-    
-    // Periksa apakah file pro-status.json ada
-    if (!fs.existsSync(PRO_STATUS_FILE)) {
-        return res.status(400).json({ 
-            success: false, 
-            message: 'File aktivasi tidak ditemukan. Silakan hubungi administrator untuk mendapatkan file aktivasi.'
-        });
-    }
-    
-    // Periksa token
-    if (token === getValidToken()) {
-        try {
-            const proStatus = JSON.parse(fs.readFileSync(PRO_STATUS_FILE));
-            proStatus.isPro = true;
-            proStatus.activatedAt = new Date().toISOString();
-            fs.writeFileSync(PRO_STATUS_FILE, JSON.stringify(proStatus));
-            res.json({ success: true });
-        } catch (error) {
-            console.error('Error saat aktivasi PRO:', error);
-            res.status(500).json({ 
-                success: false, 
-                message: 'Terjadi kesalahan saat aktivasi. Silakan coba lagi.'
-            });
-        }
-    } else {
-        res.status(400).json({ 
-            success: false, 
-            message: 'Token tidak valid.'
-        });
-    }
-});
-
-// Endpoint untuk memeriksa status PRO
-app.get('/check-pro-status', (req, res) => {
-    // Periksa apakah file pro-status.json ada
-    if (!fs.existsSync(PRO_STATUS_FILE)) {
-        return res.json({ isPro: false });
-    }
-    
-    try {
-        const proStatus = JSON.parse(fs.readFileSync(PRO_STATUS_FILE));
-        res.json({ isPro: proStatus.isPro || false });
-    } catch (error) {
-        console.error('Error saat memeriksa status PRO:', error);
-        res.json({ isPro: false });
-    }
-});
-
-// Endpoint untuk reboot device
-app.post('/reboot-device', async (req, res) => {
-    const { deviceId } = req.body;
-    
-    try {
-        // Log reboot attempt
-        console.log('Attempting to reboot device:', deviceId);
-        
-        const response = await axios.post(
-            `${process.env.GENIEACS_URL}/devices/${encodeURIComponent(deviceId)}/tasks?timeout=3000&connection_request`,
-            { name: "reboot" },
-            {
-                auth: {
-                    username: process.env.GENIEACS_USERNAME,
-                    password: process.env.GENIEACS_PASSWORD
-                },
-                headers: {
-                    'Content-Type': 'application/json'
-                }
-            }
-        );
-
-        console.log('Reboot response:', response.data);
-        res.json({ success: true, message: 'Perintah reboot berhasil dikirim' });
-    } catch (error) {
-        console.error('Reboot error:', error);
-        res.status(500).json({ 
-            success: false, 
-            message: 'Gagal mengirim perintah reboot',
-            error: error.message 
-        });
-    }
-});
-
-// Update customer number
-app.post('/update-customer-number', async (req, res) => {
-    try {
-        const { deviceId, customerNumber } = req.body;
-        
-        if (!deviceId || !customerNumber) {
-            return res.status(400).json({ 
-                success: false, 
-                message: 'Device ID dan nomor pelanggan harus diisi' 
-            });
-        }
-
-        // Validate customer number format
-        if (!/^\d+$/.test(customerNumber)) {
-            return res.status(400).json({ 
-                success: false, 
-                message: 'Nomor pelanggan harus berupa angka' 
-            });
-        }
-
-        // Encode device ID properly for the query
-        const encodedQuery = encodeURIComponent(JSON.stringify({ "_id": deviceId }));
-        console.log('Searching device with query:', encodedQuery);
-
-        // Get current tags using GenieACS query API
-        const response = await axios.get(`${process.env.GENIEACS_URL}/devices/?query=${encodedQuery}`, {
-            auth: {
-                username: process.env.GENIEACS_USERNAME,
-                password: process.env.GENIEACS_PASSWORD
-            }
-        });
-
-        console.log('GenieACS response:', response.data);
-
-        if (!response.data || !response.data.length) {
-            return res.status(404).json({
-                success: false,
-                message: 'Device tidak ditemukan'
-            });
-        }
-
-        const device = response.data[0];
-        const currentTags = device._tags || [];
-        console.log('Current tags:', currentTags);
-
-        // Remove existing numeric tags
-        for (const tag of currentTags) {
-            if (/^\d+$/.test(tag)) {
-                console.log('Removing tag:', tag);
-                await axios.delete(`${process.env.GENIEACS_URL}/devices/${encodeURIComponent(deviceId)}/tags/${tag}`, {
-                    auth: {
-                        username: process.env.GENIEACS_USERNAME,
-                        password: process.env.GENIEACS_PASSWORD
-                    }
-                });
-            }
-        }
-
-        // Add new customer number tag
-        console.log('Adding new tag:', customerNumber);
-        await axios.post(`${process.env.GENIEACS_URL}/devices/${encodeURIComponent(deviceId)}/tags/${customerNumber}`, null, {
-            auth: {
-                username: process.env.GENIEACS_USERNAME,
-                password: process.env.GENIEACS_PASSWORD
-            }
-        });
-
-        res.json({ 
-            success: true, 
-            message: 'Nomor pelanggan berhasil diupdate' 
-        });
-
-    } catch (error) {
-        console.error('Error updating customer number:', error);
-        console.error('Error details:', {
-            message: error.message,
-            response: error.response?.data,
-            status: error.response?.status
-        });
-        res.status(500).json({ 
-            success: false, 
-            message: 'Terjadi kesalahan saat mengupdate nomor pelanggan: ' + error.message 
-        });
-    }
-});
-
-// Tambahkan route khusus untuk logout admin
-app.get('/admin/logout', (req, res) => {
-    req.session.destroy();
-    res.redirect('/admin/login');
-});
-
-// Tambahkan route untuk pengaturan OTP dan WhatsApp gateway
-app.get('/admin/settings', (req, res) => {
-    if (!req.session.isAdmin) {
-        return res.redirect('/admin/login');
-    }
-
-    try {
-        const settings = JSON.parse(fs.readFileSync(SETTINGS_FILE));
-        res.render('settings', { 
-            settings, 
-            error: null,
-            success: null
-        });
-    } catch (error) {
-        console.error('Error loading settings:', error);
-        res.render('settings', { 
-            settings: {}, 
-            error: 'Gagal memuat pengaturan',
-            success: null
-        });
-    }
-});
-
-app.post('/admin/save-otp-settings', async (req, res) => {
-    if (!req.session.isAdmin) {
-        return res.status(403).json({ success: false, message: 'Tidak diizinkan' });
-    }
-
-    try {
-        const { otpEnabled, otpExpiry, otpLength, otpMessage, adminWhatsapp } = req.body;
-        
-        // Validasi
-        if (otpExpiry < 60 || otpExpiry > 3600) {
-            return res.status(400).json({ 
-                success: false, 
-                message: 'Masa berlaku OTP harus antara 60-3600 detik' 
-            });
-        }
-        
-        if (![4, 6].includes(otpLength)) {
-            return res.status(400).json({ 
-                success: false, 
-                message: 'Panjang OTP harus 4 atau 6 digit' 
-            });
-        }
-
-        // Baca pengaturan yang ada
-        const currentSettings = JSON.parse(fs.readFileSync(SETTINGS_FILE));
-        
-        // Update pengaturan OTP
-        currentSettings.otpEnabled = otpEnabled;
-        currentSettings.otpExpiry = otpExpiry;
-        currentSettings.otpLength = otpLength;
-        currentSettings.otpMessage = otpMessage;
-        currentSettings.adminWhatsapp = adminWhatsapp;
-        
-        // Simpan pengaturan
-        fs.writeFileSync(SETTINGS_FILE, JSON.stringify(currentSettings, null, 2));
-        
-        res.json({ success: true, message: 'Pengaturan OTP berhasil disimpan' });
-    } catch (error) {
-        console.error('Error saving OTP settings:', error);
-        res.status(500).json({ 
-            success: false, 
-            message: 'Gagal menyimpan pengaturan: ' + error.message 
-        });
-    }
-});
-
-app.post('/admin/save-gateway-settings', async (req, res) => {
-    if (!req.session.isAdmin) {
-        return res.status(403).json({ success: false, message: 'Tidak diizinkan' });
-    }
-
-    try {
-        const { whatsappGateway, gateways } = req.body;
-        
-        // Validasi
-        if (!['fonnte', 'wablas', 'mpwa'].includes(whatsappGateway)) {
-            return res.status(400).json({ 
-                success: false, 
-                message: 'Gateway tidak valid' 
-            });
-        }
-        
-        // Baca pengaturan yang ada
-        const currentSettings = JSON.parse(fs.readFileSync(SETTINGS_FILE));
-        
-        // Update pengaturan gateway
-        currentSettings.whatsappGateway = whatsappGateway;
-        currentSettings.gateways = gateways;
-        
-        // Simpan pengaturan
-        fs.writeFileSync(SETTINGS_FILE, JSON.stringify(currentSettings, null, 2));
-        
-        res.json({ success: true, message: 'Pengaturan gateway berhasil disimpan' });
-    } catch (error) {
-        console.error('Error saving gateway settings:', error);
-        res.status(500).json({ 
-            success: false, 
-            message: 'Gagal menyimpan pengaturan: ' + error.message 
-        });
-    }
-});
-
-app.post('/admin/test-gateway', async (req, res) => {
-    if (!req.session.isAdmin) {
-        return res.status(403).json({ success: false, message: 'Tidak diizinkan' });
-    }
-
-    try {
-        // Baca pengaturan
-        const settings = JSON.parse(fs.readFileSync(SETTINGS_FILE));
-        
-        // Kirim pesan test ke nomor admin
-        const testMessage = 'Ini adalah pesan test dari WebPortal. Jika Anda menerima pesan ini, berarti pengaturan WhatsApp gateway berhasil.';
-        const adminNumber = settings.adminWhatsapp;
-        
-        if (!adminNumber) {
-            return res.status(400).json({ 
-                success: false, 
-                message: 'Nomor admin WhatsApp belum dikonfigurasi di pengaturan' 
-            });
-        }
-        
-        const success = await sendWhatsAppMessage(adminNumber, testMessage);
-        
-        if (success) {
-            res.json({ success: true, message: 'Test berhasil' });
-        } else {
-            res.status(500).json({ 
-                success: false, 
-                message: 'Gagal mengirim pesan test' 
-            });
-        }
-    } catch (error) {
-        console.error('Error testing gateway:', error);
-        res.status(500).json({ 
-            success: false, 
-            message: 'Gagal test gateway: ' + error.message 
-        });
-    }
-});
-
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
     console.log(`Server berjalan di port ${PORT}`);
 });
-
-function getValidToken() {
-    const parts = [
-        Buffer.from('YWxp', 'base64').toString(),  // 'ali'
-        Buffer.from('amF5YQ==', 'base64').toString(), // 'jaya'
-        Buffer.from('bmV0', 'base64').toString()   // 'net'
-    ];
-    return parts.join('');
-}
