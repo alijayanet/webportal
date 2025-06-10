@@ -1,0 +1,12 @@
+# Port Configuration
+PORT=4500
+
+# GenieACS Configuration
+GENIEACS_URL=http://192.168.8.xx:7557
+GENIEACS_USERNAME=admin
+GENIEACS_PASSWORD=admin
+
+# Server Configuration
+SESSION_SECRET=rahasia-session
+ADMIN_USERNAME=admin
+ADMIN_PASSWORD=admin                                                                                                                                                                                                                            
